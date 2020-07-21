@@ -1,0 +1,2551 @@
+class ZCL_EMAIL_COMMUNICATIONS definition
+  public
+  create public .
+
+public section.
+*"* public components of class ZCL_EMAIL_COMMUNICATIONS_TEST
+*"* do not include other source files here!!!
+  interface ZIF_EMAIL_TYPES load .
+
+  interfaces ZIF_EMAIL_TYPES .
+
+  types TTY_HEADER type ref to DATA .
+
+  data V_TRICK_ME type FLAG .
+
+  methods CONSTRUCTOR .
+  methods SEND .
+  methods LOAD_SUBJECT
+    importing
+      !IV_SUBJECT type SO_OBJ_DES
+    exceptions
+      NO_SENDER
+      NO_SUBJECT
+      NO_ALLOW_CHARS .
+  methods LOAD_SENDER
+    importing
+      !IV_SENDER type ANY .
+  methods LOAD_SINGLE_RCVR
+    importing
+      !IV_RCVR type ANY
+    exceptions
+      NO_RECEIVER .
+  methods LOAD_RECEIVERS
+    importing
+      !IT_RCVRS type /IWFND/T_EPM_SEL_EMAIL .
+  methods LOAD_PRIORITY
+    importing
+      !IV_PRIORITY type STRING .
+  methods LOAD_KPI
+    importing
+      !IV_KPI_CODE type STRING .
+  methods LOAD_TEXTS
+    importing
+      !IV_SORT type I
+      !IV_TYPE type STRING optional
+      !IT_TEXT type BCSY_TEXT
+    exceptions
+      NO_TEXT .
+  methods LOAD_BODY_TABLES
+    importing
+      !IV_SORT type I
+      !IT_HEADER type ANY TABLE optional
+      !IREF_HEADER type ref to DATA optional
+      !IT_LAYOUT type ANY TABLE optional
+      !IT_TABLE type ANY TABLE .
+  methods LOAD_CHART
+    importing
+      !IV_SORT type I
+      !IF_DATA type ref to IF_IXML_DOCUMENT
+      !IF_CUSTOM type ref to IF_IXML_DOCUMENT optional
+      !IV_SIZE type STRING optional
+      !IV_TITLE type STRING optional .
+  methods LOAD_ATTACHMENTS
+    importing
+      !IV_SORT type I optional
+      !IV_SHEETNAME type STRING optional
+      !IV_FILENAME type STRING
+      !IT_CATALOGUE type LVC_T_FCAT optional
+      !IT_GROUPED type LVC_T_SORT optional
+      !IT_HEADER type STANDARD TABLE optional
+    changing
+      !CT_TABLE type STANDARD TABLE
+    exceptions
+      NOT_ALLOWED_CHARS .
+  methods GET_LAYOUT_TEMPLATE
+    importing
+      !IT_BODY type STANDARD TABLE
+    returning
+      value(RT_TEMPLATE) type ZIF_EMAIL_TYPES=>TTY_EMAIL_LAYOUT .
+  methods GET_HEADER_TEMPLATE
+    importing
+      !IT_BODY type STANDARD TABLE
+    returning
+      value(RREF_HEADER) type ref to DATA .
+  methods CHANGE_SUBJECT_LAYOUT
+    importing
+      !IV_COLOR type STRING optional
+      !IV_FONT type STRING optional
+      !IV_ALIG type STRING optional
+      !IV_SIZE type STRING optional .
+  methods CHANGE_TEXTS_LAYOUT
+    importing
+      !IV_COLOR type STRING optional
+      !IV_FONT type STRING optional
+      !IV_ALIG type STRING optional
+      !IV_SIZE type STRING optional .
+  methods CHANGE_LAYOUT_TEMPLATE
+    importing
+      !IV_ROW type I
+      !IV_SORT type I
+      !IV_BG_COLOR type STRING optional
+      !IV_FONT_COLOR type STRING optional .
+  methods CHANGE_LAYOUT_CHART
+    importing
+      !IV_SORT type I
+      !IV_CHART_TYPE type STRING optional
+      !IV_CHART_AXIS_X_DIRECTION type STRING optional
+      !IV_CHART_AXIS_X_FONT type STRING optional
+      !IV_CHART_AXIS_X_SIZE type STRING optional
+      !IV_CHART_AXIS_X_STYLE type STRING optional
+      !IV_CHART_AXIS_Y_DIRECTION type STRING optional
+      !IV_CHART_AXIS_Y_FONT type STRING optional
+      !IV_CHART_AXIS_Y_SIZE type STRING optional
+      !IV_CHART_AXIS_Y_STYLE type STRING optional
+      !IV_CHART_DIMENSION type STRING optional
+      !IV_CHART_WIDTH type STRING optional
+      !IV_CHART_HEIGHT type STRING optional
+      !IV_CHART_LEGEND_FONT type STRING optional
+      !IV_CHART_LEGEND_SIZE type STRING optional
+      !IV_CHART_LEGEND_STYLE type STRING optional
+      !IV_CHART_COLORPALETTE type STRING optional
+      !IV_CHART_S_LINEWIDTH type STRING optional
+      !IV_CHART_S_MARKERSIZE type STRING optional
+      !IV_CHART_S_LINETYPE type STRING optional
+      !IV_CHART_S_TEXT_POSITION type STRING optional
+      !IV_CHART_S_TEXT_SIZE type STRING optional
+      !IV_CHART_S_TEXT_DIRECTION type STRING optional
+      !IV_CHART_S_SHOWLABEL type STRING optional .
+  PROTECTED SECTION.
+private section.
+*"* private components of class ZCL_EMAIL_COMMUNICATIONS_TEST
+*"* do not include other source files here!!!
+
+  types:
+    rty_kpi          TYPE RANGE OF string .
+
+  data V_SUBJECT type SO_OBJ_DES .
+  data V_SUBJECT_COLOR type STRING value '#214F03'. "#EC NOTEXT .
+  data V_SUBJECT_FONT type STRING value 'calibri'. "#EC NOTEXT .
+  data V_SUBJECT_ALIGN type STRING value 'left'. "#EC NOTEXT .
+  data V_SUBJECT_SIZE type STRING value '34.667px'. "#EC NOTEXT .
+  data V_TEXT_COLOR type STRING value '#000000'. "#EC NOTEXT .
+  data V_TEXT_FONT type STRING value 'calibri'. "#EC NOTEXT .
+  data V_TEXT_ALIGN type STRING value 'left'. "#EC NOTEXT .
+  data V_TEXT_SIZE type STRING value '3'. "#EC NOTEXT .
+  data V_SENDER type ADR6-SMTP_ADDR .
+  data V_PRIORITY type CHAR1 .
+  data T_RCVRS type /IWFND/T_EPM_SEL_EMAIL .
+  data R_KPIS type RTY_KPI .
+  data T_TEXT_CONTAINER type ZIF_EMAIL_TYPES=>TTY_EMAIL_TEXTS .
+  data T_BODY_CONTAINER type ZIF_EMAIL_TYPES=>TTY_EMAIL_BODY_TABLES .
+  data T_CHART_CONTAINER type ZIF_EMAIL_TYPES=>TTY_EMAIL_BODY_CHARTS .
+  data T_ATTCH_CONTAINER type ZIF_EMAIL_TYPES=>TTY_EMAIL_ATTACHMENTS .
+  data O_SEND_REQUEST type ref to CL_BCS .
+  data O_DOCUMENT type ref to CL_DOCUMENT_BCS .
+  data O_RECIPIENT type ref to IF_RECIPIENT_BCS .
+  data O_BCS_EXCEPTION type ref to CX_BCS .
+  data O_SENT_TO_ALL type OS_BOOLEAN .
+  data O_SENDER type ref to IF_SENDER_BCS .
+  data T_FINAL_BODY type BCSY_TEXT .
+
+  methods _SUBMIT .
+  methods _CREATE_REF_FROM_TABLE
+    importing
+      !IT_ANY type ANY TABLE
+    returning
+      value(RO_REF) type ref to DATA .
+  methods _CREATE_CAT_FROM_TABLE
+    importing
+      !IT_ANY type ANY TABLE
+    returning
+      value(RT_FCAT) type LVC_T_FCAT .
+  methods _CREATE_HEADER_FROM_TABLE
+    importing
+      !IT_ANY type ANY TABLE
+    returning
+      value(RO_REF) type ref to DATA .
+  methods _GET_NAMES_FROM_DTEL
+    importing
+      !IV_DTEL type LVC_FNAME
+    changing
+      !CV_SHORT type SCRTEXT_S
+      !CV_MEDIUM type SCRTEXT_M
+      !CV_LONG type SCRTEXT_L .
+  methods _GET_TYPE
+    importing
+      !IV_FILENAME type STRING
+    returning
+      value(RV_TYPE) type STRING .
+  methods _GET_FILENAME
+    importing
+      !IV_FILENAME type STRING
+    returning
+      value(RV_NAME) type SO_OBJ_DES .
+  methods _TRANSLATE_UPPER
+    importing
+      !IV_REQUEST type ANY
+    returning
+      value(RV_TRANS) type SO_OBJ_DES .
+  methods _VALIDATE_EMAILS .
+  methods _VALIDATE_EMAIL_SINGLE
+    importing
+      !IV_EMAIL type ANY
+    returning
+      value(RV_VALID) type FLAG .
+  methods _ADD_LOGO .
+  methods _ADD_CHART .
+  methods _ADD_BODY .
+  methods _ADD_PRIORITY .
+  methods _ADD_ATTACHMENTS .
+  methods _ADD_MAIN_DETAILS .
+  methods _ADDITION_HTML_END
+    changing
+      !CT_BODY type BCSY_TEXT .
+  methods _ADDITION_HTML_START
+    changing
+      !CT_BODY type BCSY_TEXT .
+  methods _ADDITION_LOGO
+    changing
+      !CT_BODY type BCSY_TEXT .
+  methods _ADDITION_CHART
+    importing
+      !IS_CHRT type ZIF_EMAIL_TYPES=>TY_EMAIL_BODY_CHARTS
+    changing
+      !CT_BODY type BCSY_TEXT .
+  methods _ADDITION_SUBJECT
+    changing
+      !CT_BODY type BCSY_TEXT .
+  methods _ADDITION_TEXT
+    importing
+      !IS_TEXT type ZIF_EMAIL_TYPES=>TY_EMAIL_TEXTS
+      !IS_TABL type ZIF_EMAIL_TYPES=>TY_EMAIL_BODY_TABLES optional
+      !IS_CHRT type ZIF_EMAIL_TYPES=>TY_EMAIL_BODY_CHARTS optional
+    changing
+      !CT_BODY type BCSY_TEXT .
+  methods _TRANSFORM_ATTACHMENT
+    changing
+      !CT_DATA type STANDARD TABLE
+      !CS_ATTCH type ZIF_EMAIL_TYPES=>TY_EMAIL_ATTACHMENTS .
+  methods _TRANSFORM_XLSX_ATTACHMENT
+    changing
+      !CT_DATA type STANDARD TABLE
+      !CS_ATTCH type ZIF_EMAIL_TYPES=>TY_EMAIL_ATTACHMENTS .
+  methods _TRANSFORM_TXT_ATTACHMENT
+    changing
+      !CT_DATA type STANDARD TABLE
+      !CS_ATTCH type ZIF_EMAIL_TYPES=>TY_EMAIL_ATTACHMENTS .
+  methods _CHANGE_LAYOUT
+    importing
+      !IV_COLOR type STRING optional
+      !IV_FONT type STRING optional
+      !IV_ALIGN type STRING optional
+      !IV_SIZE type STRING optional
+    changing
+      !CV_COLOR type STRING
+      !CV_FONT type STRING
+      !CV_ALIGN type STRING
+      !CV_SIZE type STRING .
+  methods _CHECK_COLOR_IS_STANDARD
+    importing
+      !IV_COLOR type STRING .
+  methods _COMPOSE_CHART_CUSTOM
+    importing
+      !IV_TITLE type STRING optional
+      !IV_CHART_TYPE type STRING optional
+      !IV_CHART_COLORPALETTE type STRING optional
+      !IV_CHART_AXIS_X_DIRECTION type STRING optional
+      !IV_CHART_AXIS_X_FONT type STRING optional
+      !IV_CHART_AXIS_X_SIZE type STRING optional
+      !IV_CHART_AXIS_X_STYLE type STRING optional
+      !IV_CHART_AXIS_Y_DIRECTION type STRING optional
+      !IV_CHART_AXIS_Y_FONT type STRING optional
+      !IV_CHART_AXIS_Y_SIZE type STRING optional
+      !IV_CHART_AXIS_Y_STYLE type STRING optional
+      !IV_CHART_DIMENSION type STRING optional
+      !IV_CHART_WIDTH type STRING optional
+      !IV_CHART_HEIGHT type STRING optional
+      !IV_CHART_LEGEND_FONT type STRING optional
+      !IV_CHART_LEGEND_SIZE type STRING optional
+      !IV_CHART_LEGEND_STYLE type STRING optional
+      !IV_CHART_S_LINEWIDTH type STRING optional
+      !IV_CHART_S_MARKERSIZE type STRING optional
+      !IV_CHART_S_LINETYPE type STRING optional
+      !IV_CHART_S_TEXT_POSITION type STRING optional
+      !IV_CHART_S_TEXT_SIZE type STRING optional
+      !IV_CHART_S_TEXT_DIRECTION type STRING optional
+      !IV_CHART_S_SHOWLABEL type STRING optional
+    returning
+      value(RF_IF_XML_CUSTOM) type ref to IF_IXML_DOCUMENT .
+  methods _TRANSFORM_XML_ATTACHMENT
+    importing
+      !IT_DATA type ZIF_EMAIL_TYPES=>TTY_EMAIL_ATTACHMENTS
+    returning
+      value(RT_BINARY) type SOLIX_TAB .
+  methods _XML_DOC_WORKBOOK
+    changing
+      !CIF_DOCUMENT type ref to IF_IXML_DOCUMENT
+      !CIF_WORKBOOK type ref to IF_IXML_ELEMENT .
+  methods _XML_DOC_TABLE
+    importing
+      !IO_DATA type ref to DATA
+    changing
+      !CIF_DOCUMENT type ref to IF_IXML_DOCUMENT
+      !CIF_TABLE type ref to IF_IXML_ELEMENT .
+  methods _XML_DOC_DATA
+    importing
+      !IS_DATA type ZIF_EMAIL_TYPES=>TY_EMAIL_ATTACHMENTS
+    changing
+      !CIF_DOCUMENT type ref to IF_IXML_DOCUMENT
+      !CIF_TABLE type ref to IF_IXML_ELEMENT .
+  methods _XML_DOC_DATA_ADD
+    importing
+      !IT_DATA type STANDARD TABLE
+      !IV_STYLE type STRING
+    changing
+      !CIF_TABLE type ref to IF_IXML_ELEMENT
+      !CIF_DOCUMENT type ref to IF_IXML_DOCUMENT .
+  methods _XML_DOC_BINARY
+    importing
+      !IIF_DOCUMENT type ref to IF_IXML_DOCUMENT
+    returning
+      value(RT_BINARY) type SOLIX_TAB .
+  methods _CHECK_XML_TVARVC
+    returning
+      value(RV_TYPE) type STRING .
+  methods _NOT_ALLOWED_CHAR_SHEETNAME
+    returning
+      value(RR_NOT_ALLOWED) type ZIF_EMAIL_TYPES=>RTY_STRINGS
+    exceptions
+      NO_ALLOWED_CHARS .
+ENDCLASS.
+
+
+
+CLASS ZCL_EMAIL_COMMUNICATIONS IMPLEMENTATION.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->CHANGE_LAYOUT_CHART
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_SORT                        TYPE        I
+* | [--->] IV_CHART_TYPE                  TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_X_DIRECTION      TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_X_FONT           TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_X_SIZE           TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_X_STYLE          TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_Y_DIRECTION      TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_Y_FONT           TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_Y_SIZE           TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_Y_STYLE          TYPE        STRING(optional)
+* | [--->] IV_CHART_DIMENSION             TYPE        STRING(optional)
+* | [--->] IV_CHART_WIDTH                 TYPE        STRING(optional)
+* | [--->] IV_CHART_HEIGHT                TYPE        STRING(optional)
+* | [--->] IV_CHART_LEGEND_FONT           TYPE        STRING(optional)
+* | [--->] IV_CHART_LEGEND_SIZE           TYPE        STRING(optional)
+* | [--->] IV_CHART_LEGEND_STYLE          TYPE        STRING(optional)
+* | [--->] IV_CHART_COLORPALETTE          TYPE        STRING(optional)
+* | [--->] IV_CHART_S_LINEWIDTH           TYPE        STRING(optional)
+* | [--->] IV_CHART_S_MARKERSIZE          TYPE        STRING(optional)
+* | [--->] IV_CHART_S_LINETYPE            TYPE        STRING(optional)
+* | [--->] IV_CHART_S_TEXT_POSITION       TYPE        STRING(optional)
+* | [--->] IV_CHART_S_TEXT_SIZE           TYPE        STRING(optional)
+* | [--->] IV_CHART_S_TEXT_DIRECTION      TYPE        STRING(optional)
+* | [--->] IV_CHART_S_SHOWLABEL           TYPE        STRING(optional)
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD CHANGE_LAYOUT_CHART.
+    FIELD-SYMBOLS: <lfs_s_chart> TYPE zif_email_types=>ty_email_body_charts.
+    FIELD-SYMBOLS: <lfs_v_chart> TYPE any.
+    FIELD-SYMBOLS: <lfs_v_title> TYPE any.
+*  ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨  *
+
+    READ TABLE me->t_chart_container[] ASSIGNING <lfs_s_chart> WITH KEY sort = iv_sort.
+    IF sy-subrc EQ 0.
+      ASSIGN COMPONENT 'TITLE'         OF STRUCTURE <lfs_s_chart> TO <lfs_v_title>.
+      ASSIGN COMPONENT 'IF_XML_CUSTOM' OF STRUCTURE <lfs_s_chart> TO <lfs_v_chart>.
+      IF <lfs_v_chart> IS ASSIGNED.
+        <lfs_v_chart> = me->_compose_chart_custom( iv_title                  = <lfs_v_title>
+                                                   iv_chart_type             = iv_chart_type
+                                                   iv_chart_axis_x_direction = iv_chart_axis_x_direction
+                                                   iv_chart_axis_x_font      = iv_chart_axis_x_font
+                                                   iv_chart_axis_x_size      = iv_chart_axis_x_size
+                                                   iv_chart_axis_x_style     = iv_chart_axis_x_style
+                                                   iv_chart_axis_y_direction = iv_chart_axis_y_direction
+                                                   iv_chart_axis_y_font      = iv_chart_axis_y_font
+                                                   iv_chart_axis_y_size      = iv_chart_axis_y_size
+                                                   iv_chart_axis_y_style     = iv_chart_axis_y_style
+                                                   iv_chart_dimension        = iv_chart_dimension
+                                                   iv_chart_width            = iv_chart_width
+                                                   iv_chart_height           = iv_chart_height
+                                                   iv_chart_legend_font      = iv_chart_legend_font
+                                                   iv_chart_legend_size      = iv_chart_legend_size
+                                                   iv_chart_colorpalette     = iv_chart_colorpalette
+                                                   iv_chart_legend_style     = iv_chart_legend_style
+                                                   iv_chart_s_linewidth      = iv_chart_s_linewidth
+                                                   iv_chart_s_markersize     = iv_chart_s_markersize
+                                                   iv_chart_s_linetype       = iv_chart_s_linetype
+                                                   iv_chart_s_text_position  = iv_chart_s_text_position
+                                                   iv_chart_s_text_size      = iv_chart_s_text_size
+                                                   iv_chart_s_text_direction = iv_chart_s_text_direction
+                                                   iv_chart_s_showlabel      = iv_chart_s_showlabel      ).
+
+      ENDIF.
+    ENDIF.
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->CHANGE_LAYOUT_TEMPLATE
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_ROW                         TYPE        I
+* | [--->] IV_SORT                        TYPE        I
+* | [--->] IV_BG_COLOR                    TYPE        STRING(optional)
+* | [--->] IV_FONT_COLOR                  TYPE        STRING(optional)
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD CHANGE_LAYOUT_TEMPLATE.
+    FIELD-SYMBOLS: <lfs_s_container> TYPE zif_email_types=>ty_email_body_tables.
+    FIELD-SYMBOLS: <lfs_s_color> TYPE any.
+    FIELD-SYMBOLS: <lfs_v_color> TYPE any.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+*   Read container to obtain the corresponding Layout Table:
+    READ TABLE me->t_body_container[] ASSIGNING <lfs_s_container> WITH KEY sort = iv_sort.
+    IF sy-subrc EQ 0.
+*   Read the template provided by the class at the line you want to change:
+      READ TABLE <lfs_s_container>-layout[] ASSIGNING <lfs_s_color> INDEX iv_row.
+*   Provide the new color of that row:
+      IF iv_bg_color IS SUPPLIED.
+        ASSIGN COMPONENT 1 OF STRUCTURE <lfs_s_color> TO <lfs_v_color>.
+        zif_email_types~check_color( iv_bg_color ).
+        <lfs_v_color> = iv_bg_color.
+
+      ENDIF.
+      IF iv_font_color IS SUPPLIED.
+        ASSIGN COMPONENT 2 OF STRUCTURE <lfs_s_color> TO <lfs_v_color>.
+        zif_email_types~check_color( iv_font_color ).
+        <lfs_v_color> = iv_font_color.
+      ENDIF.
+    ENDIF.
+  ENDMETHOD.                    "change_layout_template
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->CHANGE_SUBJECT_LAYOUT
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_COLOR                       TYPE        STRING(optional)
+* | [--->] IV_FONT                        TYPE        STRING(optional)
+* | [--->] IV_ALIG                        TYPE        STRING(optional)
+* | [--->] IV_SIZE                        TYPE        STRING(optional)
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: CHANGE_SUBJECT_LAYOUT.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    me->_change_layout( EXPORTING iv_color = iv_color
+                                  iv_font  = iv_font
+                                  iv_align = iv_alig
+                                  iv_size  = iv_size
+                         CHANGING cv_color = me->v_subject_color
+                                  cv_font  = me->v_subject_font
+                                  cv_align = me->v_subject_align
+                                  cv_size  = me->v_subject_size ).
+
+  ENDMETHOD.                    "change_subject_color
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->CHANGE_TEXTS_LAYOUT
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_COLOR                       TYPE        STRING(optional)
+* | [--->] IV_FONT                        TYPE        STRING(optional)
+* | [--->] IV_ALIG                        TYPE        STRING(optional)
+* | [--->] IV_SIZE                        TYPE        STRING(optional)
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: CHANGE_TEXTS_LAYOUT.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    me->_change_layout( EXPORTING iv_color = iv_color
+                                  iv_font  = iv_font
+                                  iv_align = iv_alig
+                                  iv_size  = iv_size
+                         CHANGING cv_color = me->v_text_color
+                                  cv_font  = me->v_text_font
+                                  cv_align = me->v_text_align
+                                  cv_size  = me->v_text_size ).
+
+  ENDMETHOD.                    "change_texts_font
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->CONSTRUCTOR
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: CONSTRUCTOR.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+*   Instance main objects:
+    o_send_request = cl_bcs=>create_persistent( )..
+    CREATE OBJECT o_document.
+    CREATE OBJECT o_bcs_exception.
+
+  ENDMETHOD.                    "constructor
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->GET_HEADER_TEMPLATE
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IT_BODY                        TYPE        STANDARD TABLE
+* | [<-()] RREF_HEADER                    TYPE REF TO DATA
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: GET_HEADER_TEMPLATE.
+    DATA: lv_index     TYPE string.
+    DATA: lv_columns   TYPE i.
+    DATA: lv_fieldname TYPE lvc_fname.
+    DATA: lt_fcat TYPE lvc_t_fcat.
+    DATA: ls_fcat TYPE lvc_s_fcat.
+    DATA: lref_s  TYPE REF TO data.
+    FIELD-SYMBOLS: <lfs_t> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS: <lfs_s> TYPE any.
+    FIELD-SYMBOLS: <lfs_v> TYPE any.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    READ TABLE it_body[] ASSIGNING <lfs_s> INDEX 1.
+    IF sy-subrc EQ 0.
+      WHILE 1 = 1.
+        ASSIGN COMPONENT sy-index OF STRUCTURE <lfs_s> TO <lfs_v>.
+        IF sy-subrc EQ 0.
+          ADD 1 TO lv_columns.
+        ELSE.
+          EXIT.
+
+        ENDIF.
+      ENDWHILE.
+*   Compose catalogue from components:
+      DO lv_columns TIMES.
+        lv_index = sy-index.
+        CONCATENATE 'FIELD' lv_index INTO lv_fieldname SEPARATED BY '_'.
+        ls_fcat-fieldname = lv_fieldname.
+        ls_fcat-intlen    = 100.
+        ls_fcat-datatype  = 'CHAR'.
+        APPEND ls_fcat    TO lt_fcat.
+        CLEAR: ls_fcat, lv_fieldname, lv_index.
+      ENDDO.
+      CALL METHOD cl_alv_table_create=>create_dynamic_table
+        EXPORTING
+          it_fieldcatalog = lt_fcat
+        IMPORTING
+          ep_table        = rref_header.
+
+      ASSIGN rref_header->* TO <lfs_t>.
+      CREATE DATA lref_s LIKE LINE OF <lfs_t>.
+      ASSIGN lref_s->* TO <lfs_s>.
+      APPEND <lfs_s> TO <lfs_t>.
+
+    ENDIF.
+  ENDMETHOD.                    "get_header_template
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->GET_LAYOUT_TEMPLATE
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IT_BODY                        TYPE        STANDARD TABLE
+* | [<-()] RT_TEMPLATE                    TYPE        ZIF_EMAIL_TYPES=>TTY_EMAIL_LAYOUT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: GET_LAYOUT_TEMPLATE.
+    DATA: lv_lines  TYPE i.
+    DATA: ls_layout TYPE zif_email_types=>ty_email_layout.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    DESCRIBE TABLE it_body[] LINES lv_lines.
+    ADD 1 TO lv_lines. "Add one extra for the header!
+    DO lv_lines TIMES.
+      CASE sy-index.
+        WHEN 1.
+          ls_layout-bg_color   = '#538135'.
+          ls_layout-color      = '#FFFFFF'.
+          ls_layout-alignment  = 'center'. "'centre'. (MOD) E822903-22/06/2020
+          ls_layout-type       = 'calibri'.
+          ls_layout-size       = '100%'.
+        WHEN OTHERS.
+          ls_layout-bg_color   = '#FFFFFF'.
+          ls_layout-color      = '#000000'.
+          ls_layout-alignment  = 'center'. "'centre'. (MOD) E822903-22/06/2020
+          ls_layout-type       = 'calibri'.
+          ls_layout-size       = '100%'.
+
+      ENDCASE.
+      APPEND ls_layout TO rt_template[].
+
+    ENDDO.
+  ENDMETHOD.                    "get_layout_template
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->LOAD_ATTACHMENTS
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_SORT                        TYPE        I(optional)
+* | [--->] IV_SHEETNAME                   TYPE        STRING(optional)
+* | [--->] IV_FILENAME                    TYPE        STRING
+* | [--->] IT_CATALOGUE                   TYPE        LVC_T_FCAT(optional)
+* | [--->] IT_GROUPED                     TYPE        LVC_T_SORT(optional)
+* | [--->] IT_HEADER                      TYPE        STANDARD TABLE(optional)
+* | [<-->] CT_TABLE                       TYPE        STANDARD TABLE
+* | [EXC!] NOT_ALLOWED_CHARS
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: LOAD_ATTACHMENTS.
+    DATA: ls_attch_container TYPE zif_email_types=>ty_email_attachments.
+    FIELD-SYMBOLS: <lfs_v_size> TYPE any.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+*   Add SORT input: this would group several tables in an unique attachments. Each of them, one sheet.
+    IF iv_sort IS SUPPLIED.
+      ls_attch_container-sort       = iv_sort.
+    ENDIF.
+*   Add TYPE input: this will identify the type of attachment that we are working with (from its extension in filename).
+    ls_attch_container-type       = me->_get_type( iv_filename ).
+*   Add FILENAME input:
+    ls_attch_container-filename   = me->_get_filename( iv_filename ).
+*   Depending on the type of attachment provided, take actions if needed:
+    CASE me->_translate_upper( me->_get_type( iv_filename ) ).
+      WHEN 'XLSX'.
+*       If catalogue is supplied, get it the one provided by caller:
+        IF it_catalogue[] IS SUPPLIED.
+          ls_attch_container-catalogue = it_catalogue[].
+*       Otherwise, get it from components of input:
+        ELSE.
+          ls_attch_container-catalogue = me->_create_cat_from_table( ct_table[] ).
+        ENDIF.
+        IF it_grouped[] IS SUPPLIED.
+          ls_attch_container-grouped   = it_grouped[].
+        ENDIF.
+      WHEN 'TXT'.
+        "No Action
+      WHEN 'XML'.
+        IF iv_sheetname IS SUPPLIED AND iv_sheetname IS NOT INITIAL.
+          IF iv_sheetname IN me->_not_allowed_char_sheetname( ).
+            RAISE noT_allowed_chars.
+          ELSE.
+            ls_attch_container-sheetname = iv_sheetname.
+          ENDIF.
+        ENDIF.
+        IF it_header[] IS SUPPLIED AND it_header[] IS NOT INITIAL.
+*         Add HEADER input: By getting a reference on the table on a data object.
+          ls_attch_container-header  = me->_create_ref_from_table( it_header[] ).
+
+        ENDIF.
+      WHEN OTHERS.
+        MESSAGE 'Type of file not accepted!' TYPE 'E'.
+
+    ENDCASE.
+
+*   Add TABLE input: By getting a reference on the table on a data object.
+    ls_attch_container-table  = me->_create_ref_from_table( ct_table[] ).
+*   Transform input table to binary data: updates BINARY & SIZE field from changing structure
+    me->_transform_attachment( CHANGING  ct_data = ct_table[]
+                                         cs_attch = ls_attch_container ).
+*   Add row to container:
+    APPEND ls_attch_container TO me->t_attch_container[].
+
+  ENDMETHOD.                    "load_attachments
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->LOAD_BODY_TABLES
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_SORT                        TYPE        I
+* | [--->] IT_HEADER                      TYPE        ANY TABLE(optional)
+* | [--->] IREF_HEADER                    TYPE REF TO DATA(optional)
+* | [--->] IT_LAYOUT                      TYPE        ANY TABLE(optional)
+* | [--->] IT_TABLE                       TYPE        ANY TABLE
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: LOAD_BODY_TABLES.
+    DATA: ls_body_container TYPE zif_email_types=>ty_email_body_tables.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+*   Add inputs to container row:
+    ls_body_container-sort   = iv_sort.
+    IF it_header[] IS SUPPLIED.
+      ls_body_container-header = me->_create_ref_from_table( it_header ).
+    ELSEIF iref_header IS SUPPLIED.
+      ls_body_container-header = iref_header.
+    ELSE.
+      ls_body_container-header = me->_create_header_from_table( it_table[] ).
+    ENDIF.
+    IF it_layout[] IS SUPPLIED.
+      ls_body_container-layout = it_layout[].
+    ELSE.
+      ls_body_container-layout = me->get_layout_template( it_table[] ).
+    ENDIF.
+    ls_body_container-table  = me->_create_ref_from_table( it_table[] ).
+*   Add row to container:
+    APPEND ls_body_container TO me->t_body_container[].
+    CLEAR ls_body_container.
+
+  ENDMETHOD.                    "load_body_tables
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->LOAD_CHART
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_SORT                        TYPE        I
+* | [--->] IF_DATA                        TYPE REF TO IF_IXML_DOCUMENT
+* | [--->] IF_CUSTOM                      TYPE REF TO IF_IXML_DOCUMENT(optional)
+* | [--->] IV_SIZE                        TYPE        STRING(optional)
+* | [--->] IV_TITLE                       TYPE        STRING(optional)
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD LOAD_CHART.
+    DATA: ls_container TYPE zif_email_types=>ty_email_body_charts.
+    DATA: lt_split     TYPE STANDARD TABLE OF string.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+**    "obtain the logo from the SE78
+**    me->if_xml_data   = if_data.
+**    me->if_xml_custom = if_custom.
+
+    ls_container-sort          = iv_sort.
+    ls_container-if_xml_data   = if_data.
+    IF if_custom IS SUPPLIED.
+      ls_container-if_xml_custom = if_custom.
+    ELSE.
+      ls_container-if_xml_custom = me->_compose_chart_custom( iv_title = iv_title ).
+    ENDIF.
+    IF iv_size IS NOT INITIAL AND iv_size CS 'x'.
+      ls_container-size = iv_size.
+    ELSE.
+      ls_container-size = '900X600'.
+    ENDIF.
+    TRANSLATE ls_container-size TO UPPER CASE.
+    SPLIT ls_container-size AT 'X' INTO TABLE lt_split[].
+    READ TABLE lt_split[] INTO ls_container-width  INDEX 1.
+    READ TABLE lt_split[] INTO ls_container-length INDEX 2.
+
+    ls_container-chart_name = ls_container-sort.
+    CONDENSE ls_container-chart_name NO-GAPS.
+    CONCATENATE 'CHART' ls_container-chart_name INTO ls_container-chart_name SEPARATED BY '_'.
+
+    ls_container-title = iv_title.
+    APPEND ls_container TO me->t_chart_container[].
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->LOAD_KPI
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_KPI_CODE                    TYPE        STRING
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: LOAD_KPI.
+    DATA: ls_kpi   TYPE LINE OF rty_kpi.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    ls_kpi-sign   = 'I'.
+    ls_kpi-option = 'EQ'.
+    ls_kpi-low    = iv_kpi_code.
+    APPEND ls_kpi TO me->r_kpis[].
+
+  ENDMETHOD.                    "load_kpi
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->LOAD_PRIORITY
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_PRIORITY                    TYPE        STRING
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: LOAD_PRIORITY.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    CASE me->_translate_upper( iv_priority ).
+      WHEN 'HIGH'.
+        me->v_priority = '1'.
+      WHEN 'MEDIUM'.
+        me->v_priority = '5'.
+      WHEN 'LOW'.
+        me->v_priority = '9'.
+
+    ENDCASE.
+  ENDMETHOD.                    "load_priority
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->LOAD_RECEIVERS
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IT_RCVRS                       TYPE        /IWFND/T_EPM_SEL_EMAIL
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: LOAD_RECEIVERS.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    me->t_rcvrs[] = it_rcvrs[].
+
+  ENDMETHOD.                    "load_receivers
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->LOAD_SENDER
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_SENDER                      TYPE        ANY
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: LOAD_SENDER.
+    DATA: lv_sndr_aux TYPE adr6-smtp_addr.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    lv_sndr_aux  = iv_sender.
+    me->v_sender = lv_sndr_aux.
+
+  ENDMETHOD.                    "load_sender
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->LOAD_SINGLE_RCVR
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_RCVR                        TYPE        ANY
+* | [EXC!] NO_RECEIVER
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: LOAD_SINGLE_RCVR.
+    DATA: ls_rcvrs TYPE LINE OF /iwfnd/t_epm_sel_email.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    IF iv_rcvr IS NOT INITIAL.
+      ls_rcvrs-sign   = 'I'.
+      ls_rcvrs-option = 'EQ'.
+      ls_rcvrs-low    = iv_rcvr.
+      APPEND ls_rcvrs TO me->t_rcvrs[].
+    ELSE.
+      RAISE no_receiver.
+
+    ENDIF.
+  ENDMETHOD.                    "load_single_rcvr
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->LOAD_SUBJECT
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_SUBJECT                     TYPE        SO_OBJ_DES
+* | [EXC!] NO_SENDER
+* | [EXC!] NO_SUBJECT
+* | [EXC!] NO_ALLOW_CHARS
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: LOAD_SUBJECT.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    IF iv_subject IS NOT INITIAL.
+      me->v_subject = iv_subject.
+    ELSE.
+      RAISE no_subject.
+
+    ENDIF.
+  ENDMETHOD.                    "load_subject
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->LOAD_TEXTS
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_SORT                        TYPE        I
+* | [--->] IV_TYPE                        TYPE        STRING(optional)
+* | [--->] IT_TEXT                        TYPE        BCSY_TEXT
+* | [EXC!] NO_TEXT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: LOAD_TEXTS.
+    DATA: ls_text_container TYPE zif_email_types=>ty_email_texts.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    IF it_text[] IS NOT INITIAL.
+*   Add inputs to container row:
+      ls_text_container-sort = iv_sort.
+      ls_text_container-type = iv_type.
+      ls_text_container-text = it_text[].
+*   Add row to container:
+      APPEND ls_text_container TO me->t_text_container[].
+    ELSE.
+      RAISE no_text.
+
+    ENDIF.
+  ENDMETHOD.                    "load_texts
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->SEND
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: SEND.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+*   Validate that emails have been provided and format is correct:
+    me->_validate_emails( ).
+*   Add priority:
+    me->_add_priority( ).
+*   Add body details: texts, body embedded tables and KPI details
+    me->_add_body( ).
+*   Add main details to request: Subject, priority and body text
+    me->_add_main_details( ).
+*   If attachments were provided, add them to request:
+    me->_add_attachments( ).
+*   Add SP Logo to email attachments:
+    me->_add_logo( ).
+*   ///////////////////////////////////////////////
+    me->_add_chart( ).
+*   ///////////////////////////////////////////////
+*   Once done, sent email:
+    me->_submit( ).
+
+  ENDMETHOD.                    "send
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_COMMUNICATIONS->ZIF_EMAIL_TYPES~CHECK_COLOR
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_COLOR                       TYPE        STRING
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD ZIF_EMAIL_TYPES~CHECK_COLOR.
+    CHECK me->v_trick_me IS INITIAL.
+    IF iv_color EQ zif_email_types=>c_pure_white    OR
+       iv_color EQ zif_email_types=>c_header_green  OR
+       iv_color EQ zif_email_types=>c_row_3_green   OR
+       iv_color EQ zif_email_types=>c_row_2_green   OR
+       iv_color EQ zif_email_types=>c_row_1_green   OR
+       iv_color EQ zif_email_types=>c_row_0_green   OR
+       iv_color EQ zif_email_types=>c_header_blue   OR
+       iv_color EQ zif_email_types=>c_row_3_blue    OR
+       iv_color EQ zif_email_types=>c_row_2_blue    OR
+       iv_color EQ zif_email_types=>c_row_1_blue    OR
+       iv_color EQ zif_email_types=>c_row_0_blue    OR
+       iv_color EQ zif_email_types=>c_header_orange OR
+       iv_color EQ zif_email_types=>c_row_3_orange  OR
+       iv_color EQ zif_email_types=>c_row_2_orange  OR
+       iv_color EQ zif_email_types=>c_row_1_orange  OR
+       iv_color EQ zif_email_types=>c_row_0_orange  OR
+       iv_color EQ zif_email_types=>c_header_red    OR
+       iv_color EQ zif_email_types=>c_row_3_red     OR
+       iv_color EQ zif_email_types=>c_row_2_red     OR
+       iv_color EQ zif_email_types=>c_row_1_red     OR
+       iv_color EQ zif_email_types=>c_row_0_red     OR
+       iv_color EQ zif_email_types=>c_header_yellow OR
+       iv_color EQ zif_email_types=>c_row_3_yellow  OR
+       iv_color EQ zif_email_types=>c_row_2_yellow  OR
+       iv_color EQ zif_email_types=>c_row_1_yellow  OR
+       iv_color EQ zif_email_types=>c_row_0_yellow.
+
+      "All right! Keep going.
+    ELSE.
+      MESSAGE 'Colors provided do not fit in the standard stablished. Please, check constant declarations in the Attributes of ZIF_EMAIL_TYPES with tcode SE24.' TYPE 'E' DISPLAY LIKE 'S'.
+
+    ENDIF.
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_ADDITION_CHART
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IS_CHRT                        TYPE        ZIF_EMAIL_TYPES=>TY_EMAIL_BODY_CHARTS
+* | [<-->] CT_BODY                        TYPE        BCSY_TEXT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _ADDITION_CHART.
+*    CONSTANTS: lc_chart TYPE string VALUE '<img src = "cid:%%%.jpg", align="left" width="$$$" height="&&&"></img>'.
+    CONSTANTS: lc_chart TYPE string VALUE '<img src = "cid:%%%.jpg"; align="center"></img>'.
+    DATA: lv_line      TYPE string.
+    DATA: ls_line      TYPE LINE OF bcsy_text.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    ls_line-line = lc_chart.
+    REPLACE ALL OCCURRENCES OF '%%%' IN ls_line-line WITH is_chrt-chart_name.
+    REPLACE ALL OCCURRENCES OF '$$$' IN ls_line-line WITH is_chrt-width.
+    REPLACE ALL OCCURRENCES OF '&&&' IN ls_line-line WITH is_chrt-length.
+    APPEND ls_line TO ct_body[].
+    APPEND '<br/><br/>' TO ct_body[].
+    CLEAR: ls_line.
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_ADDITION_HTML_END
+* +-------------------------------------------------------------------------------------------------+
+* | [<-->] CT_BODY                        TYPE        BCSY_TEXT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+METHOD _ADDITION_HTML_END.
+  DATA: lv_html_0 TYPE string VALUE '</body>'.
+  DATA: lv_html_1 TYPE string VALUE '</html>'.
+
+  APPEND lv_html_0 TO ct_body[].
+  APPEND lv_html_1 TO ct_body[].
+
+ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_ADDITION_HTML_START
+* +-------------------------------------------------------------------------------------------------+
+* | [<-->] CT_BODY                        TYPE        BCSY_TEXT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+METHOD _addition_html_start.
+  DATA:
+        lv_html_0 TYPE string VALUE '<!DOCTYPE html>',
+        lv_html_1 TYPE string VALUE '<html>',
+        lv_html_2 TYPE string VALUE '<head>',
+        lv_html_3 TYPE string VALUE '<style>',
+        lv_html_4 TYPE string VALUE 'table, th, td {',
+        lv_html_5 TYPE string VALUE 'border: 1px solid ligthgrey;',
+        lv_html_6 TYPE string VALUE 'border-collapse: collapse;',
+        lv_html_7 TYPE string VALUE '}',
+        lv_html_8 TYPE string VALUE '</style>',
+        lv_html_9 TYPE string VALUE '</head>',
+        lv_html_10 TYPE string VALUE '<body>'.
+
+  APPEND lv_html_0 TO ct_body[].
+  APPEND lv_html_1 TO ct_body[].
+  APPEND lv_html_2 TO ct_body[].
+  APPEND lv_html_3 TO ct_body[].
+  APPEND lv_html_4 TO ct_body[].
+  APPEND lv_html_5 TO ct_body[].
+  APPEND lv_html_6 TO ct_body[].
+  APPEND lv_html_7 TO ct_body[].
+  APPEND lv_html_8 TO ct_body[].
+  APPEND lv_html_9 TO ct_body[].
+  APPEND lv_html_10 TO ct_body[].
+
+ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_ADDITION_LOGO
+* +-------------------------------------------------------------------------------------------------+
+* | [<-->] CT_BODY                        TYPE        BCSY_TEXT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _ADDITION_LOGO.
+    CONSTANTS: lc_logo TYPE string VALUE '<img src = "cid:LOGOSP.jpg", align="left" width="210" height="210"></img>'.
+    DATA: lv_line      TYPE string.
+    DATA: ls_line      TYPE LINE OF bcsy_text.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    ls_line-line = lc_logo.
+    APPEND ls_line TO ct_body[].
+    CLEAR: ls_line.
+
+  ENDMETHOD.                    "_addition_logo
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_ADDITION_SUBJECT
+* +-------------------------------------------------------------------------------------------------+
+* | [<-->] CT_BODY                        TYPE        BCSY_TEXT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _ADDITION_SUBJECT.
+*    DATA: lc_subject_start TYPE string VALUE '<h1><h1 style="color:$; font-family:&; text-align:*; font-size:!;"><u>'.
+    DATA: lc_subject_start TYPE string VALUE '<h1><strong><u style="color:$;"><FONT FACE="&">'.
+    DATA: lc_subject_end TYPE string VALUE '</FONT></u></strong></h1>'.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    REPLACE ALL OCCURRENCES OF '$' IN lc_subject_start WITH me->v_subject_color.
+    REPLACE ALL OCCURRENCES OF '&' IN lc_subject_start WITH me->v_subject_font.
+    REPLACE ALL OCCURRENCES OF '*' IN lc_subject_start WITH me->v_subject_align.
+    REPLACE ALL OCCURRENCES OF '!'  IN lc_subject_start WITH me->v_subject_size.
+    APPEND lc_subject_start TO ct_body[].
+    APPEND me->v_subject TO ct_body[].
+    APPEND lc_subject_end TO ct_body[].
+
+  ENDMETHOD.                    "_addition_subject
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_ADDITION_TEXT
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IS_TEXT                        TYPE        ZIF_EMAIL_TYPES=>TY_EMAIL_TEXTS
+* | [--->] IS_TABL                        TYPE        ZIF_EMAIL_TYPES=>TY_EMAIL_BODY_TABLES(optional)
+* | [--->] IS_CHRT                        TYPE        ZIF_EMAIL_TYPES=>TY_EMAIL_BODY_CHARTS(optional)
+* | [<-->] CT_BODY                        TYPE        BCSY_TEXT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _ADDITION_TEXT.
+*    DATA: lv_paragraph_start TYPE string VALUE '<p><p style="color:$; text-align:*; font-size:!"><FONT FACE="&">'.
+    DATA: lv_paragraph_start TYPE string VALUE '<FONT FACE="&"><FONT SIZE="3">'.
+    DATA: lv_paragraph_end TYPE string VALUE '</FONT SIZE></FONT FACE>'.
+    DATA: lo_html         TYPE REF TO zcl_email_tab_html.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+*   Add the current text to the existing body:
+    REPLACE ALL OCCURRENCES OF '$' IN lv_paragraph_start WITH me->v_text_color.
+    REPLACE ALL OCCURRENCES OF '&' IN lv_paragraph_start WITH me->v_text_font.
+    REPLACE ALL OCCURRENCES OF '*' IN lv_paragraph_start WITH me->v_text_align.
+    REPLACE ALL OCCURRENCES OF '!'  IN lv_paragraph_start WITH me->v_text_size.
+    APPEND lv_paragraph_start TO ct_body[].
+    APPEND LINES OF is_text-text TO ct_body[].
+    APPEND lv_paragraph_end TO ct_body[].
+    IF is_tabl IS SUPPLIED AND is_tabl IS NOT INITIAL.
+      CREATE OBJECT lo_html
+        EXPORTING
+          iref_header = is_tabl-header
+          iref_table  = is_tabl-table
+          it_layout   = is_tabl-layout
+          iv_trick_me = me->v_trick_me.
+
+      lo_html->transform( CHANGING ct_body = ct_body ).
+    ENDIF.
+    IF is_chrt IS SUPPLIED AND is_chrt IS NOT INITIAL.
+      me->_addition_chart(  EXPORTING is_chrt = is_chrt
+                            CHANGING ct_body = ct_body ).
+    ENDIF.
+  ENDMETHOD.                    "_addition_text
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_ADD_ATTACHMENTS
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _ADD_ATTACHMENTS.
+    FIELD-SYMBOLS: <lfs_s_container> TYPE zif_email_types=>ty_email_attachments.
+    FIELD-SYMBOLS: <lfs_s_processed> TYPE zif_email_types=>ty_email_attachments.
+    DATA: lt_container TYPE zif_email_types=>tty_email_attachments.
+    DATA: ls_container TYPE zif_email_types=>ty_email_attachments.
+    DATA: lv_attch_type TYPE soodk-objtp.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    LOOP AT me->t_attch_container ASSIGNING <lfs_s_container>.
+      CASE me->_translate_upper( <lfs_s_container>-type ).
+        WHEN 'XLSX'.
+          lv_attch_type = 'BIN'.
+        WHEN 'TXT'.
+          lv_attch_type = 'TXT'.
+        WHEN 'XML'.
+          IF me->_check_xml_tvarvc( ) EQ 'XML'.
+            lv_attch_type = 'XML'.
+          ELSE.
+            lv_attch_type = 'BIN'.
+            REPLACE ALL OCCURRENCES OF '.xml' IN <lfs_s_container>-filename WITH '.xls'.
+            REPLACE ALL OCCURRENCES OF '.XML' IN <lfs_s_container>-filename WITH '.xls'.
+          ENDIF.
+*         Get a copy of container to pick up all tables which belong to the same XML multi-sheets attachment:
+          CHECK <lfs_s_container>-processed EQ abap_false.
+          lt_container[] = me->t_attch_container[].
+*         Stick to the ones concerning the same sort order:
+          DELETE lt_container[] WHERE sort NE <lfs_s_container>-sort.
+*         Mark, from beforehand, all tables involved in same XML as processed. Otherwise, we will attach them twice:
+          LOOP AT lt_container INTO ls_container.
+            READ TABLE me->t_attch_container[] ASSIGNING <lfs_s_processed> WITH KEY sort      = ls_container-sort
+                                                                                    filename  = ls_container-filename
+                                                                                    sheetname = ls_container-sheetname.
+            IF sy-subrc EQ 0.
+              <lfs_s_processed>-processed = abap_true.
+
+            ENDIF.
+
+          ENDLOOP.
+*         Transform the iXML object into Binary format:
+          <lfs_s_container>-binary = me->_transform_xml_attachment( lt_container[] ).
+
+      ENDCASE.
+      me->o_document->add_attachment( i_attachment_type    = lv_attch_type
+                                      i_attachment_subject = <lfs_s_container>-filename
+                                      i_attachment_size    = <lfs_s_container>-size
+                                      i_att_content_hex    = <lfs_s_container>-binary ).
+
+*     Mark all attachments which have been processed:
+      <lfs_s_container>-processed = abap_true.
+
+    ENDLOOP.
+  ENDMETHOD.                    "_add_attachments
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_ADD_BODY
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _ADD_BODY.
+    DATA: ls_text_container   TYPE zif_email_types=>ty_email_texts.
+    DATA: ls_table_container  TYPE zif_email_types=>ty_email_body_tables.
+    DATA: ls_chart_container  TYPE zif_email_types=>ty_email_body_charts.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+*   Add html declarations:
+    me->_addition_html_start( CHANGING ct_body = me->t_final_body[] ).
+*   Add the logo to the email:
+    me->_addition_logo( CHANGING ct_body = me->t_final_body[] ).
+*   Add the subject as a title to the body:
+    me->_addition_subject( CHANGING ct_body = me->t_final_body[] ).
+*   Add the rest of the texts: look for a SORT correspondence with the body embedded tables
+    LOOP AT me->t_text_container[] INTO ls_text_container.
+      READ TABLE me->t_body_container[] INTO ls_table_container WITH KEY sort = ls_text_container-sort.
+      READ TABLE me->t_chart_container[] INTO ls_chart_container WITH KEY sort = ls_text_container-sort.
+      me->_addition_text( EXPORTING is_text = ls_text_container
+                                    is_tabl = ls_table_container
+                                    is_chrt = ls_chart_container
+                          CHANGING  ct_body = me->t_final_body[] ).
+
+      CLEAR: ls_table_container, ls_chart_container.
+    ENDLOOP.
+*   Add html declarations:
+    me->_addition_html_end( CHANGING ct_body = me->t_final_body[] ).
+  ENDMETHOD.                    "_add_body
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_ADD_CHART
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _ADD_CHART.
+    DATA: lv_size TYPE i.
+    DATA: lv_xstring TYPE xstring.
+    DATA: lt_binary_content TYPE solix_tab.
+    DATA: ls_binary_content TYPE solix.
+    DATA: lv_image_size     TYPE sood-objlen.
+
+    DATA: l_igs_ce          TYPE REF TO cl_igs_chart_engine.
+    DATA: l_errors          TYPE w3htmltabtype.
+    DATA: l_imagemap_html   TYPE w3htmltabtype.
+    DATA: l_imagemap_length TYPE w3param-cont_len.
+    DATA: lt_image_mime     TYPE w3mimetabtype.
+    DATA: ls_image_mime     TYPE w3mime.
+    DATA: l_image_size      TYPE w3param-cont_len.
+    DATA: l_image_type      TYPE w3param-cont_type.
+    FIELD-SYMBOLS: <lfs_s_charts> TYPE zif_email_types=>ty_email_body_charts.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+
+    LOOP AT me->t_chart_container[] ASSIGNING <lfs_s_charts>.
+      CREATE OBJECT l_igs_ce
+        EXPORTING
+          destination = 'IGS_RFC_DEST'.
+
+      CALL METHOD l_igs_ce->set_data
+        EXPORTING
+          data_doc = <lfs_s_charts>-if_xml_data.
+      CALL METHOD l_igs_ce->set_customizing
+        EXPORTING
+          custom_doc = <lfs_s_charts>-if_xml_custom.
+
+      CALL METHOD l_igs_ce->execute
+        EXCEPTIONS
+          OTHERS = 1.
+
+      IF sy-subrc IS INITIAL.
+
+        CALL METHOD l_igs_ce->get_image
+          IMPORTING
+            image      = lt_image_mime
+            image_size = l_image_size
+            image_type = l_image_type.
+
+*     Bypass image size through bridge-variable: lv_image_size
+        lv_image_size = l_image_size.
+
+      ENDIF.
+*     Bypass image binary data through bridge-variable: lt_image_mime
+      LOOP AT lt_image_mime INTO ls_image_mime.
+        ls_binary_content-line = ls_image_mime-line.
+        APPEND ls_binary_content TO lt_binary_content[].
+
+      ENDLOOP.
+
+      CHECK me->o_document IS BOUND.
+      CALL METHOD me->o_document->add_attachment(
+        EXPORTING
+          i_attachment_type    = 'JPG'
+          i_attachment_subject = <lfs_s_charts>-chart_name
+          i_attachment_size    = lv_image_size
+          i_att_content_hex    = lt_binary_content ).
+
+      CLEAR: lt_binary_content, lt_image_mime, ls_binary_content, ls_image_mime, lv_image_size.
+
+    ENDLOOP.
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_ADD_LOGO
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _ADD_LOGO.
+    DATA: lv_size TYPE i.
+    DATA: lv_xstring TYPE xstring.
+    DATA: lt_binary_content TYPE solix_tab.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    "obtain the logo from the SE78
+    CALL METHOD cl_ssf_xsf_utilities=>get_bds_graphic_as_bmp
+      EXPORTING
+        p_object  = 'GRAPHICS'
+        p_name    = 'LOGOSP'
+        p_id      = 'BMAP'
+        p_btype   = 'BCOL'
+      RECEIVING
+        p_bmp     = lv_xstring
+      EXCEPTIONS
+        not_found = 1
+        OTHERS    = 2.
+    IF sy-subrc EQ 0.
+      "save file
+      CALL FUNCTION 'SCMS_XSTRING_TO_BINARY'
+        EXPORTING
+          buffer        = lv_xstring
+        IMPORTING
+          output_length = lv_size
+        TABLES
+          binary_tab    = lt_binary_content.
+    ENDIF.
+
+    CHECK me->o_document IS BOUND.
+    CALL METHOD me->o_document->add_attachment(
+      EXPORTING
+        i_attachment_type    = 'jpg'
+        i_attachment_subject = 'LOGOSP'
+        i_att_content_hex    = lt_binary_content ).
+
+  ENDMETHOD.                    "_add_logo
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_ADD_MAIN_DETAILS
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _ADD_MAIN_DETAILS.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    me->o_document = cl_document_bcs=>create_document( i_type       = 'HTM'
+                                                       i_text       = me->t_final_body[]
+                                                       i_subject    = me->v_subject
+                                                       i_importance = me->v_priority ).
+
+  ENDMETHOD.                    "_add_main_details
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_ADD_PRIORITY
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _ADD_PRIORITY.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    TRY.
+        me->o_document->set_importance( i_importance = me->v_priority ).
+      CATCH cx_sy_move_cast_error.
+    ENDTRY.
+  ENDMETHOD.                    "_add_priority
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_CHANGE_LAYOUT
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_COLOR                       TYPE        STRING(optional)
+* | [--->] IV_FONT                        TYPE        STRING(optional)
+* | [--->] IV_ALIGN                       TYPE        STRING(optional)
+* | [--->] IV_SIZE                        TYPE        STRING(optional)
+* | [<-->] CV_COLOR                       TYPE        STRING
+* | [<-->] CV_FONT                        TYPE        STRING
+* | [<-->] CV_ALIGN                       TYPE        STRING
+* | [<-->] CV_SIZE                        TYPE        STRING
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _CHANGE_LAYOUT.
+    DATA: lt_result TYPE match_result_tab.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    IF iv_color IS SUPPLIED AND iv_color IS NOT INITIAL.
+      IF iv_color(1) EQ '#'.
+        zif_email_types~check_color( iv_color ).
+        cv_color = iv_color.
+        TRANSLATE cv_color TO UPPER CASE.
+      ELSE.
+        MESSAGE 'Color parameter only accepts hexadecimal format: #9D9D9D / #FFFFFF' TYPE 'S' DISPLAY LIKE 'E'.
+      ENDIF.
+    ENDIF.
+    IF iv_font IS SUPPLIED AND iv_font IS NOT INITIAL.
+      FIND ALL OCCURRENCES OF REGEX '[[:punct:][:digit:]]' IN iv_font IN CHARACTER MODE RESULTS lt_result.
+      IF sy-subrc NE 0.
+        cv_font = iv_font.
+        TRANSLATE cv_font TO LOWER CASE.
+      ELSE.
+        MESSAGE 'Font paramenter only accepts alphabetic strings, like: calibri / arial' TYPE 'S' DISPLAY LIKE 'E'.
+      ENDIF.
+    ENDIF.
+    IF iv_align IS SUPPLIED AND iv_align IS NOT INITIAL.
+      IF iv_align CS 'right' OR iv_align CS 'centre' OR iv_align CS 'left'.
+        cv_align = iv_align.
+        TRANSLATE cv_align TO LOWER CASE.
+      ELSE.
+        MESSAGE 'Alignment parameter has to match the following patterns: right / centre / left' TYPE 'E'.
+      ENDIF.
+    ENDIF.
+    IF iv_size IS SUPPLIED AND iv_size IS NOT INITIAL.
+      IF iv_size CS '%'.
+        cv_size = iv_size.
+      ELSE.
+        MESSAGE 'Subject size parameter has to match the following pattern: 100%' TYPE 'S' DISPLAY LIKE 'E'.
+
+      ENDIF.
+    ENDIF.
+  ENDMETHOD.                    "_change_layout
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_CHECK_COLOR_IS_STANDARD
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_COLOR                       TYPE        STRING
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _CHECK_COLOR_IS_STANDARD.
+
+    CHECK me->v_trick_me IS INITIAL.
+    IF iv_color EQ zif_email_types=>c_header_green  OR
+       iv_color EQ zif_email_types=>c_row_3_green   OR
+       iv_color EQ zif_email_types=>c_row_2_green   OR
+       iv_color EQ zif_email_types=>c_row_1_green   OR
+       iv_color EQ zif_email_types=>c_row_0_green   OR
+       iv_color EQ zif_email_types=>c_header_blue   OR
+       iv_color EQ zif_email_types=>c_row_3_blue    OR
+       iv_color EQ zif_email_types=>c_row_2_blue    OR
+       iv_color EQ zif_email_types=>c_row_1_blue    OR
+       iv_color EQ zif_email_types=>c_row_0_blue    OR
+       iv_color EQ zif_email_types=>c_header_orange OR
+       iv_color EQ zif_email_types=>c_row_3_orange  OR
+       iv_color EQ zif_email_types=>c_row_2_orange  OR
+       iv_color EQ zif_email_types=>c_row_1_orange  OR
+       iv_color EQ zif_email_types=>c_row_0_orange.
+*       iv_color EQ zif_email_types=>c_red_vivid.
+      "All right! Keep going.
+    ELSE.
+      MESSAGE text-100 TYPE 'E' DISPLAY LIKE 'S'.
+
+    ENDIF.
+
+  ENDMETHOD.                    "_check_color_is_standard
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_CHECK_XML_TVARVC
+* +-------------------------------------------------------------------------------------------------+
+* | [<-()] RV_TYPE                        TYPE        STRING
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _CHECK_XML_TVARVC.
+    DATA: ls_tvarvc TYPE tvarvc.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    SELECT * FROM tvarvc INTO ls_tvarvc WHERE name EQ 'ZCL_EMAIL_COMMUNICATIONS_XML'.
+      IF sy-subrc EQ 0.
+        rv_type = ls_tvarvc-low.
+
+      ENDIF.
+    ENDSELECT.
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_COMPOSE_CHART_CUSTOM
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_TITLE                       TYPE        STRING(optional)
+* | [--->] IV_CHART_TYPE                  TYPE        STRING(optional)
+* | [--->] IV_CHART_COLORPALETTE          TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_X_DIRECTION      TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_X_FONT           TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_X_SIZE           TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_X_STYLE          TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_Y_DIRECTION      TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_Y_FONT           TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_Y_SIZE           TYPE        STRING(optional)
+* | [--->] IV_CHART_AXIS_Y_STYLE          TYPE        STRING(optional)
+* | [--->] IV_CHART_DIMENSION             TYPE        STRING(optional)
+* | [--->] IV_CHART_WIDTH                 TYPE        STRING(optional)
+* | [--->] IV_CHART_HEIGHT                TYPE        STRING(optional)
+* | [--->] IV_CHART_LEGEND_FONT           TYPE        STRING(optional)
+* | [--->] IV_CHART_LEGEND_SIZE           TYPE        STRING(optional)
+* | [--->] IV_CHART_LEGEND_STYLE          TYPE        STRING(optional)
+* | [--->] IV_CHART_S_LINEWIDTH           TYPE        STRING(optional)
+* | [--->] IV_CHART_S_MARKERSIZE          TYPE        STRING(optional)
+* | [--->] IV_CHART_S_LINETYPE            TYPE        STRING(optional)
+* | [--->] IV_CHART_S_TEXT_POSITION       TYPE        STRING(optional)
+* | [--->] IV_CHART_S_TEXT_SIZE           TYPE        STRING(optional)
+* | [--->] IV_CHART_S_TEXT_DIRECTION      TYPE        STRING(optional)
+* | [--->] IV_CHART_S_SHOWLABEL           TYPE        STRING(optional)
+* | [<-()] RF_IF_XML_CUSTOM               TYPE REF TO IF_IXML_DOCUMENT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD _COMPOSE_CHART_CUSTOM.
+    DATA: l_ixml               TYPE REF TO if_ixml.
+    DATA: l_root               TYPE REF TO if_ixml_element.
+    DATA: l_globalsettings     TYPE REF TO if_ixml_element.
+    DATA: l_layout             TYPE REF TO if_ixml_element.
+    DATA: l_automatic          TYPE REF TO if_ixml_element.
+    DATA: l_default            TYPE REF TO if_ixml_element.
+    DATA: l_elements           TYPE REF TO if_ixml_element.
+    DATA: l_chartelements      TYPE REF TO if_ixml_element.
+    DATA: l_series             TYPE REF TO if_ixml_element.
+    DATA: l_values             TYPE REF TO if_ixml_element.
+    DATA: l_charttype          TYPE REF TO if_ixml_element.
+    DATA: l_showlabel          TYPE REF TO if_ixml_element.
+    DATA: l_color              TYPE REF TO if_ixml_element.
+    DATA: l_linecolor          TYPE REF TO if_ixml_element.
+    DATA: l_linewidth          TYPE REF TO if_ixml_element.
+    DATA: l_markersize         TYPE REF TO if_ixml_element.
+    DATA: l_linetype           TYPE REF TO if_ixml_element.
+    DATA: l_text               TYPE REF TO if_ixml_element.
+    DATA: l_verticalposition   TYPE REF TO if_ixml_element.
+    DATA: l_direction          TYPE REF TO if_ixml_element.
+    DATA: l_style              TYPE REF TO if_ixml_element.
+    DATA: l_size               TYPE REF TO if_ixml_element.
+    DATA: l_chartaxes          TYPE REF TO if_ixml_element.
+    DATA: l_categoryaxis       TYPE REF TO if_ixml_element.
+    DATA: l_valueaxis          TYPE REF TO if_ixml_element.
+    DATA: l_background         TYPE REF TO if_ixml_element.
+    DATA: l_gridline           TYPE REF TO if_ixml_element.
+    DATA: l_plotarea           TYPE REF TO if_ixml_element.
+    DATA: l_axis               TYPE REF TO if_ixml_element.
+    DATA: l_line               TYPE REF TO if_ixml_element.
+    DATA: l_legend             TYPE REF TO if_ixml_element.
+    DATA: l_title              TYPE REF TO if_ixml_element.
+    DATA: l_element            TYPE REF TO if_ixml_element.
+    DATA: l_encoding           TYPE REF TO if_ixml_encoding.
+* Main parameters to be tweaked in customisation of Chart: Default values
+    DATA: lv_chart_type               TYPE string VALUE zif_email_types=>c_chart_type_lines      .
+    DATA: lv_chart_axis_x_direction   TYPE string VALUE zif_email_types=>c_chart_axis_x_direction.
+    DATA: lv_chart_axis_x_font        TYPE string VALUE zif_email_types=>c_chart_axis_x_font     .
+    DATA: lv_chart_axis_x_size        TYPE string VALUE zif_email_types=>c_chart_axis_x_size     .
+    DATA: lv_chart_axis_x_style       TYPE string VALUE zif_email_types=>c_chart_axis_x_style    .
+    DATA: lv_chart_axis_y_direction   TYPE string VALUE zif_email_types=>c_chart_axis_y_direction.
+    DATA: lv_chart_axis_y_font        TYPE string VALUE zif_email_types=>c_chart_axis_y_font     .
+    DATA: lv_chart_axis_y_size        TYPE string VALUE zif_email_types=>c_chart_axis_y_size     .
+    DATA: lv_chart_axis_y_style       TYPE string VALUE zif_email_types=>c_chart_axis_y_style    .
+    DATA: lv_chart_dimension          TYPE string VALUE zif_email_types=>c_chart_dimension_0     .
+    DATA: lv_chart_width              TYPE string VALUE zif_email_types=>c_chart_width           .
+    DATA: lv_chart_height             TYPE string VALUE zif_email_types=>c_chart_height          .
+    DATA: lv_chart_legend_font        TYPE string VALUE zif_email_types=>c_chart_legend_font     .
+    DATA: lv_chart_legend_size        TYPE string VALUE zif_email_types=>c_chart_legend_size     .
+    DATA: lv_chart_legend_style       TYPE string VALUE zif_email_types=>c_chart_legend_style    .
+    DATA: lv_chart_palette            TYPE string VALUE zif_email_types=>c_chart_palette_0       .
+    DATA: lv_chart_title_font         TYPE string VALUE zif_email_types=>c_chart_title_font      .
+    DATA: lv_chart_title_size         TYPE string VALUE zif_email_types=>c_chart_title_size      .
+    DATA: lv_chart_title_style        TYPE string VALUE zif_email_types=>c_chart_title_style     .
+    DATA: lv_chart_background_color        TYPE string VALUE zif_email_types=>c_chart_background_color     .
+    DATA: lv_chart_plotarea_color          TYPE string VALUE zif_email_types=>c_chart_plotarea_color       .
+    DATA: lv_chart_axis_color              TYPE string VALUE zif_email_types=>c_chart_axis_color           .
+    DATA: lv_chart_axis_gridline           TYPE string VALUE zif_email_types=>c_chart_axis_gridline        .
+    DATA: lv_chart_series_linewidth        TYPE string VALUE zif_email_types=>c_chart_s_linewidth     .
+    DATA: lv_chart_series_markersize       TYPE string VALUE zif_email_types=>c_chart_s_markersize    .
+    DATA: lv_chart_series_linetype         TYPE string VALUE zif_email_types=>c_chart_s_linetype      .
+    DATA: lv_chart_series_showlabel        TYPE string VALUE zif_email_types=>c_chart_s_showlabel     .
+    DATA: lv_chart_series_text_position    TYPE string VALUE zif_email_types=>c_chart_s_text_position .
+    DATA: lv_chart_series_text_size        TYPE string VALUE zif_email_types=>c_chart_s_text_size     .
+    DATA: lv_chart_series_text_direction   TYPE string VALUE zif_email_types=>c_chart_s_text_direction.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+
+* Check if the caller has provided a different value as an input parameter:
+    IF iv_chart_type              IS SUPPLIED AND iv_chart_type             IS NOT INITIAL.
+      lv_chart_type = iv_chart_type.
+    ENDIF.
+    IF iv_chart_axis_x_direction  IS SUPPLIED AND iv_chart_axis_x_direction IS NOT INITIAL.
+      lv_chart_axis_x_direction = iv_chart_axis_x_direction.
+    ENDIF.
+    IF iv_chart_axis_x_font       IS SUPPLIED AND iv_chart_axis_x_font      IS NOT INITIAL.
+      lv_chart_axis_x_font = iv_chart_axis_x_font.
+    ENDIF.
+    IF iv_chart_axis_x_size       IS SUPPLIED AND iv_chart_axis_x_size      IS NOT INITIAL.
+      lv_chart_axis_x_size = iv_chart_axis_x_size.
+    ENDIF.
+    IF iv_chart_axis_x_style      IS SUPPLIED AND iv_chart_axis_x_style     IS NOT INITIAL.
+      lv_chart_axis_x_style = iv_chart_axis_x_style.
+    ENDIF.
+    IF iv_chart_axis_y_direction  IS SUPPLIED AND iv_chart_axis_y_direction IS NOT INITIAL.
+      lv_chart_axis_y_direction = iv_chart_axis_y_direction.
+    ENDIF.
+    IF iv_chart_axis_y_font       IS SUPPLIED AND iv_chart_axis_y_font      IS NOT INITIAL.
+      lv_chart_axis_y_font = iv_chart_axis_y_font.
+    ENDIF.
+    IF iv_chart_axis_y_size       IS SUPPLIED AND iv_chart_axis_y_size      IS NOT INITIAL.
+      lv_chart_axis_y_size = iv_chart_axis_y_size.
+    ENDIF.
+    IF iv_chart_axis_y_style      IS SUPPLIED AND iv_chart_axis_y_style     IS NOT INITIAL.
+      lv_chart_axis_y_style = iv_chart_axis_y_style.
+    ENDIF.
+    IF iv_chart_dimension         IS SUPPLIED AND iv_chart_dimension        IS NOT INITIAL.
+      lv_chart_dimension = iv_chart_dimension.
+    ENDIF.
+    IF iv_chart_width             IS SUPPLIED AND iv_chart_width            IS NOT INITIAL.
+      lv_chart_width = iv_chart_width.
+    ENDIF.
+    IF iv_chart_height            IS SUPPLIED AND iv_chart_height           IS NOT INITIAL.
+      lv_chart_height = iv_chart_height.
+    ENDIF.
+    IF iv_chart_legend_font       IS SUPPLIED AND iv_chart_legend_font      IS NOT INITIAL.
+      lv_chart_legend_font = iv_chart_legend_font.
+    ENDIF.
+    IF iv_chart_legend_size       IS SUPPLIED AND iv_chart_legend_size      IS NOT INITIAL.
+      lv_chart_legend_size = iv_chart_legend_size.
+    ENDIF.
+    IF iv_chart_legend_style      IS SUPPLIED AND iv_chart_legend_style     IS NOT INITIAL.
+      lv_chart_legend_style = iv_chart_legend_style.
+    ENDIF.
+    IF iv_chart_colorpalette      IS SUPPLIED AND iv_chart_colorpalette     IS NOT INITIAL.
+      lv_chart_palette = iv_chart_colorpalette.
+    ENDIF.
+
+
+    IF iv_chart_s_showlabel      IS SUPPLIED AND iv_chart_s_showlabel     IS NOT INITIAL.
+      lv_chart_series_showlabel = iv_chart_s_showlabel.
+    ENDIF.
+    IF iv_chart_s_linewidth      IS SUPPLIED AND iv_chart_s_linewidth     IS NOT INITIAL.
+      lv_chart_series_linewidth = iv_chart_s_linewidth.
+    ENDIF.
+    IF iv_chart_s_markersize      IS SUPPLIED AND iv_chart_s_markersize     IS NOT INITIAL.
+      lv_chart_series_markersize = iv_chart_s_markersize.
+    ENDIF.
+    IF iv_chart_s_linetype      IS SUPPLIED AND iv_chart_s_linetype     IS NOT INITIAL.
+      lv_chart_series_linetype = iv_chart_s_linetype.
+    ENDIF.
+    IF iv_chart_s_text_position      IS SUPPLIED AND iv_chart_s_text_position     IS NOT INITIAL.
+      lv_chart_series_text_position = iv_chart_s_text_position.
+    ENDIF.
+    IF iv_chart_s_text_size      IS SUPPLIED AND iv_chart_s_text_size     IS NOT INITIAL.
+      lv_chart_series_text_size = iv_chart_s_text_size.
+    ENDIF.
+    IF iv_chart_s_text_direction      IS SUPPLIED AND iv_chart_s_text_direction     IS NOT INITIAL.
+      lv_chart_series_text_direction = iv_chart_s_text_direction.
+    ENDIF.
+
+* Create IXML instance from Factory Class:
+    l_ixml       = cl_ixml=>create( ).
+* Create IXML document from instanced object:
+    rf_if_xml_custom = l_ixml->create_document( ).
+* Define common XML parameters:
+    l_encoding = l_ixml->create_encoding( byte_order = if_ixml_encoding=>co_little_endian
+                                          character_set = 'utf-16' ).
+    rf_if_xml_custom->set_encoding( l_encoding ).
+
+    l_root = rf_if_xml_custom->create_simple_element( name   = 'SAPChartCustomizing'
+                                                  parent = rf_if_xml_custom ).
+    l_root->set_attribute( name = 'version' value = '2.0' ).
+
+* START CUSTOMISATION OF XML CHART: ////////////////////////////////////////////////////////////////////////////////////////////////
+* Customise Global Settings: ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨
+    l_globalsettings = rf_if_xml_custom->create_simple_element( name   = 'GlobalSettings'
+                                                            parent = l_root ).
+* In Root > GlobalSettings > Width & Height:
+    l_element = rf_if_xml_custom->create_simple_element( name = 'Width'                         parent = l_globalsettings ).
+    l_element->if_ixml_node~set_value( lv_chart_width ).
+    l_element = rf_if_xml_custom->create_simple_element( name = 'Height'                        parent = l_globalsettings ).
+    l_element->if_ixml_node~set_value( lv_chart_height ).
+
+* In Root > GlobalSettings > Dimension:
+    l_element = rf_if_xml_custom->create_simple_element( name = 'Dimension'                     parent = l_globalsettings ).
+    l_element->if_ixml_node~set_value( lv_chart_dimension ).
+
+* In Root > GlobalSettings > ColorPalette:
+    l_element = rf_if_xml_custom->create_simple_element( name = 'ColorPalette'                  parent = l_globalsettings ).
+    l_element->if_ixml_node~set_value( lv_chart_palette ).
+
+* In Root > GlobalSettings > Defaults: ChartType & FontFamily
+    l_default = rf_if_xml_custom->create_simple_element( name = 'Defaults'                      parent = l_globalsettings ).
+    l_element = rf_if_xml_custom->create_simple_element( name = 'FontFamily'                    parent = l_default ).
+    l_element->if_ixml_node~set_value( 'Arial' ).
+    l_element = rf_if_xml_custom->create_simple_element( name = 'ChartType'                     parent = l_default ).
+    l_element->if_ixml_node~set_value( lv_chart_type ).
+* Customise Elements Settings: ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨
+* In Elements > ChartElements & ChartAxes:
+    l_elements = rf_if_xml_custom->create_simple_element( name   = 'Elements'                   parent = l_root ).
+    l_chartelements = rf_if_xml_custom->create_simple_element( name = 'ChartElements'           parent = l_elements ).
+* In Elements > ChartElements > Background: Color
+    l_background = rf_if_xml_custom->create_simple_element( name   = 'Background'                         parent = l_chartelements ).
+    l_element = rf_if_xml_custom->create_simple_element( name = 'Color'                       parent = l_background ).
+    l_element->if_ixml_node~set_value( lv_chart_background_color ).
+* In Elements > ChartElements > PlotArea: Color
+    l_plotarea = rf_if_xml_custom->create_simple_element( name   = 'PlotArea'                         parent = l_chartelements ).
+    l_element = rf_if_xml_custom->create_simple_element( name = 'Color'                       parent = l_plotarea ).
+    l_element->if_ixml_node~set_value( lv_chart_plotarea_color ).
+
+
+
+
+
+
+
+* In Elements > ChartElements > Title: Caption & Style
+    l_title = rf_if_xml_custom->create_simple_element( name   = 'Title'                         parent = l_chartelements ).
+    l_element = rf_if_xml_custom->create_simple_element( name = 'Caption'                       parent = l_title ).
+    l_element->if_ixml_node~set_value( iv_title ).
+
+    l_text = rf_if_xml_custom->create_simple_element( name = 'Text'                             parent = l_title ).
+    l_element = rf_if_xml_custom->create_simple_element( name = 'FontFamily'                    parent = l_text ).
+    l_element->if_ixml_node~set_value( lv_chart_title_font ).
+    l_element = rf_if_xml_custom->create_simple_element( name = 'Style'                         parent = l_text ).
+    l_element->if_ixml_node~set_value( lv_chart_title_style ).
+    l_element = rf_if_xml_custom->create_simple_element( name = 'Size'                          parent = l_text ).
+    l_element->if_ixml_node~set_value( lv_chart_title_size ).
+* In Elements > ChartElements > Legend: Caption & Style
+    l_legend = rf_if_xml_custom->create_simple_element( name   = 'Legend'                       parent = l_chartelements ).
+    l_text = rf_if_xml_custom->create_simple_element( name = 'Text'                             parent = l_legend ).
+    l_element = rf_if_xml_custom->create_simple_element( name = 'FontFamily'                    parent = l_text ).
+    l_element->if_ixml_node~set_value( lv_chart_legend_font ).
+    l_element = rf_if_xml_custom->create_simple_element( name = 'Style'                         parent = l_text ).
+    l_element->if_ixml_node~set_value( lv_chart_legend_style ).
+    l_element = rf_if_xml_custom->create_simple_element( name = 'Size'                          parent = l_text ).
+    l_element->if_ixml_node~set_value( lv_chart_legend_size ).
+* Customise Element Settings: ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨
+* In Elements > ChartAxes > CategoryAxis > Line > Axis: Color // Text: FontFamily & Size & Direction
+    l_chartaxes    = rf_if_xml_custom->create_simple_element( name   = 'ChartAxes'              parent = l_elements ).
+    l_categoryaxis = rf_if_xml_custom->create_simple_element( name   = 'CategoryAxis'           parent = l_chartaxes ).
+    l_line         = rf_if_xml_custom->create_simple_element( name = 'Line'                     parent = l_categoryaxis ).
+
+    l_axis         = rf_if_xml_custom->create_simple_element( name = 'Axis'                     parent = l_line ).
+    l_element      = rf_if_xml_custom->create_simple_element( name = 'Color'               parent = l_axis ).
+    l_element->if_ixml_node~set_value( lv_chart_axis_color ).
+
+    l_text         = rf_if_xml_custom->create_simple_element( name = 'Text'                     parent = l_line ).
+    l_element      = rf_if_xml_custom->create_simple_element( name = 'FontFamily'               parent = l_text ).
+    l_element->if_ixml_node~set_value( lv_chart_axis_x_font ).
+    l_element      = rf_if_xml_custom->create_simple_element( name = 'Size'                     parent = l_text ).
+    l_element->if_ixml_node~set_value( lv_chart_axis_x_size ).
+    l_element      = rf_if_xml_custom->create_simple_element( name = 'Direction'                parent = l_text ).
+    l_element->if_ixml_node~set_value( lv_chart_axis_x_direction ).
+
+    l_gridline         = rf_if_xml_custom->create_simple_element( name = 'GridLine'                     parent = l_categoryaxis ).
+    l_element      = rf_if_xml_custom->create_simple_element( name = 'Color'               parent = l_gridline ).
+    l_element->if_ixml_node~set_value( lv_chart_axis_gridline ).
+
+* In Elements > ChartAxes > ValueAxis1 > Line > Text: FontFamily & Size & Direction
+    l_valueaxis    = rf_if_xml_custom->create_simple_element( name   = 'ValueAxis'              parent = l_chartaxes ).
+    l_line         = rf_if_xml_custom->create_simple_element( name = 'Line'                     parent = l_valueaxis ).
+    l_text         = rf_if_xml_custom->create_simple_element( name = 'Text'                     parent = l_line ).
+    l_element      = rf_if_xml_custom->create_simple_element( name = 'FontFamily'               parent = l_text ).
+    l_element->if_ixml_node~set_value( lv_chart_axis_y_font ).
+    l_element      = rf_if_xml_custom->create_simple_element( name = 'Size'                     parent = l_text ).
+    l_element->if_ixml_node~set_value( lv_chart_axis_y_size ).
+    l_element      = rf_if_xml_custom->create_simple_element( name = 'Direction'                parent = l_text ).
+    l_element->if_ixml_node~set_value( lv_chart_axis_y_direction ).
+
+    l_gridline         = rf_if_xml_custom->create_simple_element( name = 'GridLine'                     parent = l_valueaxis ).
+    l_element      = rf_if_xml_custom->create_simple_element( name = 'Color'               parent = l_gridline ).
+    l_element->if_ixml_node~set_value( lv_chart_axis_gridline ).
+
+
+
+
+
+
+
+* In Values > Series & ChartType & ShowLabel & Color & LineColor & LineWidth & MarkerSize & LineType & Text
+    l_values       = rf_if_xml_custom->create_simple_element( name   = 'Values'                 parent = l_root ).
+    l_series       = rf_if_xml_custom->create_simple_element( name = 'Series'                   parent = l_values ).
+    l_series->set_attribute( name = 'id' value = 'custom_series' ).
+* In Values > Series > ChartType:
+    l_charttype    = rf_if_xml_custom->create_simple_element( name = 'ChartType'                parent = l_series ).
+    l_charttype->if_ixml_node~set_value( 'Automatic' ).
+* In Values > Series > ShowLabel:
+    l_showlabel    = rf_if_xml_custom->create_simple_element( name = 'ShowLabel'                parent = l_series ).
+    l_showlabel->if_ixml_node~set_value( lv_chart_series_showlabel ).
+* In Values > Series > LineWidth:
+    l_linewidth    = rf_if_xml_custom->create_simple_element( name = 'LineWidth'                parent = l_series ).
+    l_linewidth->if_ixml_node~set_value( lv_chart_series_linewidth ).
+* In Values > Series > MarkerSize:
+    l_markersize   = rf_if_xml_custom->create_simple_element( name = 'MarkerSize'               parent = l_series ).
+    l_markersize->if_ixml_node~set_value( lv_chart_series_markersize ).
+* In Values > Series > LineType:
+    l_linetype     = rf_if_xml_custom->create_simple_element( name = 'LineType'                 parent = l_series ).
+    l_linetype->if_ixml_node~set_value( lv_chart_series_linetype ).
+* In Values > Series > Text:
+    l_text         = rf_if_xml_custom->create_simple_element( name = 'Text'                     parent = l_series ).
+    l_element      = rf_if_xml_custom->create_simple_element( name = 'VerticalPosition'         parent = l_text ).
+    l_element->if_ixml_node~set_value( lv_chart_series_text_position ).
+    l_element      = rf_if_xml_custom->create_simple_element( name = 'Size'                     parent = l_text ).
+    l_element->if_ixml_node~set_value( lv_chart_series_text_size ).
+    l_element      = rf_if_xml_custom->create_simple_element( name = 'Direction'                parent = l_text ).
+    l_element->if_ixml_node~set_value( lv_chart_series_text_direction ).
+
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_CREATE_CAT_FROM_TABLE
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IT_ANY                         TYPE        ANY TABLE
+* | [<-()] RT_FCAT                        TYPE        LVC_T_FCAT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _CREATE_CAT_FROM_TABLE.
+    DATA: lo_importdb           TYPE REF TO cl_abap_expimp_db.
+    DATA: lref_table            TYPE REF TO cl_abap_tabledescr.
+    DATA: lref_struct           TYPE REF TO cl_abap_structdescr.
+    DATA: lt_details            TYPE abap_compdescr_tab.
+    DATA: ls_details            TYPE LINE OF abap_compdescr_tab.
+    DATA: lt_fcat               TYPE lvc_t_fcat.
+    DATA: ls_fcat               TYPE lvc_s_fcat.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    CREATE OBJECT lo_importdb.
+*   Get structure of generic typed exporting table provided by user:
+    lref_table  ?= cl_abap_tabledescr=>describe_by_data( it_any[] ).
+    lref_struct ?= lref_table->get_table_line_type( ).
+    lt_details[] = lref_struct->components.
+*   Compose catalogue from components:
+    LOOP AT lt_details INTO ls_details.
+      ls_fcat-fieldname = ls_details-name.
+      ls_fcat-intlen    = ls_details-length.
+      ls_fcat-datatype  = ls_details-type_kind.
+      me->_get_names_from_dtel( EXPORTING iv_dtel   = ls_details-name
+                                CHANGING  cv_short  = ls_fcat-scrtext_s
+                                          cv_medium = ls_fcat-scrtext_m
+                                          cv_long   = ls_fcat-scrtext_l ).
+      ls_fcat-coltext   = ls_fcat-scrtext_l.
+      APPEND ls_fcat    TO rt_fcat[].
+      CLEAR ls_fcat.
+
+    ENDLOOP.
+
+  ENDMETHOD.                    "_create_cat_from_table
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_CREATE_HEADER_FROM_TABLE
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IT_ANY                         TYPE        ANY TABLE
+* | [<-()] RO_REF                         TYPE REF TO DATA
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _CREATE_HEADER_FROM_TABLE.
+    DATA: lt_fcat               TYPE lvc_t_fcat.
+    DATA: ls_fcat               TYPE lvc_s_fcat.
+    DATA: lref_header           TYPE REF TO data.
+    DATA: lv_columns            TYPE i.
+    FIELD-SYMBOLS: <lfs_t>      TYPE STANDARD TABLE.
+    FIELD-SYMBOLS: <lfs_s>      TYPE any.
+    FIELD-SYMBOLS: <lfs_v>      TYPE any.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    lt_fcat[] = me->_create_cat_from_table( it_any[] ).
+    ro_ref = me->get_header_template( it_any[] ).
+    ASSIGN ro_ref->* TO <lfs_t>.
+*   Point to the unique row of the header:
+    READ TABLE <lfs_t> ASSIGNING <lfs_s> INDEX 1.
+*   Get to know the number of columns of the table:
+    WHILE 1 = 1.
+      ASSIGN COMPONENT sy-index OF STRUCTURE <lfs_s> TO <lfs_v>.
+      IF sy-subrc EQ 0.
+        ADD 1 TO lv_columns.
+      ELSE.
+        EXIT.
+
+      ENDIF.
+    ENDWHILE.
+    DO lv_columns TIMES.
+      ASSIGN COMPONENT sy-index OF STRUCTURE <lfs_s> TO <lfs_v>.
+      READ TABLE lt_fcat INTO ls_fcat INDEX sy-index.
+      IF sy-subrc EQ 0.
+        IF ls_fcat-scrtext_m IS NOT INITIAL.
+          <lfs_v> = ls_fcat-scrtext_m.
+        ELSEIF ls_fcat-scrtext_s IS NOT INITIAL.
+          <lfs_v> = ls_fcat-scrtext_s.
+        ELSEIF ls_fcat-scrtext_l IS NOT INITIAL.
+          <lfs_v> = ls_fcat-scrtext_l.
+        ELSE.
+          <lfs_v> = ls_fcat-coltext.
+        ENDIF.
+      ENDIF.
+    ENDDO.
+  ENDMETHOD.                    "_create_header_from_table
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_CREATE_REF_FROM_TABLE
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IT_ANY                         TYPE        ANY TABLE
+* | [<-()] RO_REF                         TYPE REF TO DATA
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _CREATE_REF_FROM_TABLE.
+    DATA: lo_importdb           TYPE REF TO cl_abap_expimp_db.
+    DATA: lref_table            TYPE REF TO cl_abap_tabledescr.
+    DATA: lref_struct           TYPE REF TO cl_abap_structdescr.
+    DATA: lt_details            TYPE abap_compdescr_tab.
+    DATA: ls_details            TYPE LINE OF abap_compdescr_tab.
+    DATA: lt_fcat               TYPE lvc_t_fcat.
+    DATA: ls_fcat               TYPE lvc_s_fcat.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    CREATE OBJECT lo_importdb.
+*   Get structure of generic typed exporting table provided by user:
+    lref_table  ?= cl_abap_tabledescr=>describe_by_data( it_any[] ).
+    lref_struct ?= lref_table->get_table_line_type( ).
+    lt_details[] = lref_struct->components.
+*   Compose catalogue from components:
+    LOOP AT lt_details INTO ls_details.
+      ls_fcat-fieldname = ls_details-name.
+      ls_fcat-intlen    = ls_details-length.
+      ls_fcat-datatype  = ls_details-type_kind.
+      APPEND ls_fcat    TO lt_fcat.
+      CLEAR ls_fcat.
+
+    ENDLOOP.
+*   Create dynamic data object with the same structure that the exporting table et_data:
+    cl_alv_table_create=>create_dynamic_table( EXPORTING it_fieldcatalog  = lt_fcat
+                                                         i_length_in_byte = abap_true
+                                               IMPORTING ep_table         = ro_ref ).
+*   Return a referenced object to the input table provided:
+    GET REFERENCE OF it_any[] INTO ro_ref.
+
+  ENDMETHOD.                    "_create_ref_from_table
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_GET_FILENAME
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_FILENAME                    TYPE        STRING
+* | [<-()] RV_NAME                        TYPE        SO_OBJ_DES
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _GET_FILENAME.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    rv_name = iv_filename.
+
+  ENDMETHOD.                    "_get_filename
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_GET_NAMES_FROM_DTEL
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_DTEL                        TYPE        LVC_FNAME
+* | [<-->] CV_SHORT                       TYPE        SCRTEXT_S
+* | [<-->] CV_MEDIUM                      TYPE        SCRTEXT_M
+* | [<-->] CV_LONG                        TYPE        SCRTEXT_L
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _GET_NAMES_FROM_DTEL.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    SELECT scrtext_s scrtext_m scrtext_s
+      FROM dd04t
+      INTO (cv_short, cv_medium, cv_long)
+      WHERE rollname   EQ iv_dtel
+        AND ddlanguage EQ 'EN'.
+
+    ENDSELECT.
+  ENDMETHOD.                    "_get_names_from_dtel
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_GET_TYPE
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_FILENAME                    TYPE        STRING
+* | [<-()] RV_TYPE                        TYPE        STRING
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _GET_TYPE.
+    DATA: lt_result    TYPE match_result_tab.
+    DATA: ls_result    TYPE LINE OF match_result_tab.
+    DATA: lv_length    TYPE i.
+    DATA: lv_lines     TYPE i.
+    DATA: ls_split     TYPE string.
+    DATA: lt_split     TYPE STANDARD TABLE OF string.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+*   Get a copy of the filename to manipulate it:
+    FIND ALL OCCURRENCES OF '.' IN iv_filename RESULTS lt_result.
+    DESCRIBE TABLE lt_result LINES lv_lines.
+    READ TABLE lt_result INTO ls_result INDEX lv_lines.
+    lv_length = ls_result-offset + 1.
+    rv_type = iv_filename+lv_length.
+    TRANSLATE rv_type TO UPPER CASE.
+    IF rv_type EQ 'XLSX' OR rv_type EQ 'TXT' OR rv_type EQ 'XML'.
+      "All right: continue
+    ELSE.
+      MESSAGE 'Valid file extension not provided: .xlsx / .txt / .xml' TYPE 'E'.
+
+    ENDIF.
+  ENDMETHOD.                    "_get_type
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_NOT_ALLOWED_CHAR_SHEETNAME
+* +-------------------------------------------------------------------------------------------------+
+* | [<-()] RR_NOT_ALLOWED                 TYPE        ZIF_EMAIL_TYPES=>RTY_STRINGS
+* | [EXC!] NO_ALLOWED_CHARS
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+METHOD _NOT_ALLOWED_CHAR_SHEETNAME.
+
+  DATA: ls_not_allowed TYPE LINE OF zif_email_types=>rty_stringS.
+*¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨*
+  ls_not_allowed-sign   = 'I'.
+  ls_not_allowed-option = 'EQ'.
+  ls_not_allowed-low    = ':'.
+  APPEND ls_not_allowed TO rr_not_allowed.
+  ls_not_allowed-low    = '\'.
+  APPEND ls_not_allowed TO rr_not_allowed.
+  ls_not_allowed-low    = '/'.
+  APPEND ls_not_allowed TO rr_not_allowed.
+  ls_not_allowed-low    = '?'.
+  APPEND ls_not_allowed TO rr_not_allowed.
+  ls_not_allowed-low    = '*'.
+  APPEND ls_not_allowed TO rr_not_allowed.
+  ls_not_allowed-low    = '['.
+  APPEND ls_not_allowed TO rr_not_allowed.
+  ls_not_allowed-low    = ']'.
+  APPEND ls_not_allowed TO rr_not_allowed.
+
+ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_SUBMIT
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _SUBMIT.
+    DATA: ls_rcvrs TYPE LINE OF /iwfnd/t_epm_sel_email.
+    DATA: lv_rcvrs TYPE ad_smtpadr.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+*   Submit document object to send request
+    me->o_send_request->set_document( me->o_document ).
+*   Set sender:
+    me->o_sender = cl_cam_address_bcs=>create_internet_address( i_address_string = me->v_sender ).
+    me->o_send_request->set_sender( i_sender = me->o_sender ).
+*   Set receivers:
+    LOOP AT me->t_rcvrs[] INTO ls_rcvrs.
+      "format change
+      lv_rcvrs = ls_rcvrs-low.
+      "add receiver
+      me->o_recipient = cl_cam_address_bcs=>create_internet_address( lv_rcvrs ).
+      "add recipient object to send request
+      me->o_send_request->add_recipient( me->o_recipient ).
+
+    ENDLOOP.
+*   Send document
+    me->o_sent_to_all = me->o_send_request->send( i_with_error_screen = abap_true ).
+    COMMIT WORK.
+    IF me->o_sent_to_all IS INITIAL.
+      MESSAGE i500(sbcoms) WITH lv_rcvrs.
+
+    ELSE.
+      MESSAGE s022(so).
+    ENDIF.
+  ENDMETHOD.                    "_submit
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_TRANSFORM_ATTACHMENT
+* +-------------------------------------------------------------------------------------------------+
+* | [<-->] CT_DATA                        TYPE        STANDARD TABLE
+* | [<-->] CS_ATTCH                       TYPE        ZIF_EMAIL_TYPES=>TY_EMAIL_ATTACHMENTS
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _TRANSFORM_ATTACHMENT.
+
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+*   Depending on attachement type, transform accordingly:
+    CASE me->_translate_upper( cs_attch-type ).
+      WHEN 'XLSX'.
+        me->_transform_xlsx_attachment( CHANGING ct_data  = ct_data[]
+                                                 cs_attch = cs_attch ).
+
+      WHEN 'TXT'.
+        me->_transform_xlsx_attachment( CHANGING ct_data  = ct_data[]
+                                                 cs_attch = cs_attch ).
+      WHEN 'XML'.
+        "No action
+
+    ENDCASE.
+  ENDMETHOD.                    "_transform_attachment
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_TRANSFORM_TXT_ATTACHMENT
+* +-------------------------------------------------------------------------------------------------+
+* | [<-->] CT_DATA                        TYPE        STANDARD TABLE
+* | [<-->] CS_ATTCH                       TYPE        ZIF_EMAIL_TYPES=>TY_EMAIL_ATTACHMENTS
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _TRANSFORM_TXT_ATTACHMENT.
+    DATA: lv_size TYPE i.
+    DATA: lv_txt  TYPE string.
+    FIELD-SYMBOLS: <lfs_t_attachment> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS: <lfs_s_attachment> TYPE any.
+    FIELD-SYMBOLS: <lfs_v_attachment> TYPE any.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+*   De-reference attachment file:
+    ASSIGN cs_attch-table->* TO <lfs_t_attachment>.
+    CHECK <lfs_t_attachment> IS ASSIGNED.
+    LOOP AT <lfs_t_attachment> ASSIGNING <lfs_s_attachment>.
+      ASSIGN COMPONENT sy-tabix OF STRUCTURE <lfs_s_attachment> TO <lfs_v_attachment>.
+      CONCATENATE lv_txt <lfs_v_attachment> cl_abap_char_utilities=>cr_lf INTO lv_txt.
+
+    ENDLOOP.
+    TRY.
+        "transform txt to solix
+        cl_bcs_convert=>string_to_solix( EXPORTING iv_string   = lv_txt
+                                                   iv_codepage = '4103'  "suitable for MS Excel, leave empty
+                                                   iv_add_bom  = 'X'     "for other doc types
+                                         IMPORTING et_solix  = cs_attch-binary[]
+                                                   ev_size   = cs_attch-size ).
+      CATCH cx_bcs.
+        MESSAGE e445(so).
+    ENDTRY.
+  ENDMETHOD.                    "_transform_txt_attachment
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_TRANSFORM_XLSX_ATTACHMENT
+* +-------------------------------------------------------------------------------------------------+
+* | [<-->] CT_DATA                        TYPE        STANDARD TABLE
+* | [<-->] CS_ATTCH                       TYPE        ZIF_EMAIL_TYPES=>TY_EMAIL_ATTACHMENTS
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _TRANSFORM_XLSX_ATTACHMENT.
+    DATA: lv_size TYPE i.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    CALL FUNCTION 'ZGEN_ITAB_TO_XLSX'
+      EXPORTING
+        i_fcatalog         = cs_attch-catalogue[]
+        i_sort             = cs_attch-grouped[]
+      IMPORTING
+        lit_binary_content = cs_attch-binary
+        v_size             = lv_size
+      TABLES
+        i_tab              = ct_data[].
+
+*   Bypass attachment size:
+    cs_attch-size = lv_size.
+
+  ENDMETHOD.                    "_transform_xlsx_attachment
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_TRANSFORM_XML_ATTACHMENT
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IT_DATA                        TYPE        ZIF_EMAIL_TYPES=>TTY_EMAIL_ATTACHMENTS
+* | [<-()] RT_BINARY                      TYPE        SOLIX_TAB
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _TRANSFORM_XML_ATTACHMENT.
+    DATA: lo_ce_container    TYPE REF TO cl_gui_custom_container.
+    DATA: lo_ce_viewer       TYPE REF TO cl_gui_chart_engine.
+    DATA: lif_ixml           TYPE REF TO if_ixml.
+    DATA: lif_ixml_sf        TYPE REF TO if_ixml_stream_factory.
+    DATA: lif_document       TYPE REF TO if_ixml_document.
+    DATA: lif_encoding      TYPE REF TO if_ixml_encoding.
+    DATA: lif_workbook      TYPE REF TO if_ixml_element.
+    DATA: lif_attribute     TYPE REF TO if_ixml_attribute.
+    DATA: lif_worksheet     TYPE REF TO if_ixml_element.
+    DATA: lif_table         TYPE REF TO if_ixml_element.
+    DATA: lif_row           TYPE REF TO if_ixml_element.
+    DATA: lif_cell          TYPE REF TO if_ixml_element.
+    DATA: lif_data          TYPE REF TO if_ixml_element.
+    DATA: lv_sheets_count   TYPE i VALUE 1.
+    DATA: lv_do_3_times     TYPE i VALUE 1.
+    DATA: lv_do_4_times     TYPE i VALUE 1.
+    DATA: ls_data           TYPE zif_email_types=>ty_email_attachments.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+*   Create global objects
+    lif_ixml = cl_ixml=>create( ).
+    lif_ixml_sf = lif_ixml->create_stream_factory( ).
+    lif_document = lif_ixml->create_document( ).
+    lif_encoding = lif_ixml->create_encoding( byte_order    = if_ixml_encoding=>co_little_endian
+                                              character_set = 'utf-8' ).
+    lif_document->set_encoding( lif_encoding ).
+*   Start Workbook //////////////////////////////////////////////////////////////////////////////
+    lif_workbook  = lif_document->create_simple_element( name   = 'Workbook'
+                                                         parent = lif_document ).
+*   Add common parts of workbook:
+    me->_xml_doc_workbook( CHANGING cif_document = lif_document
+                                    cif_workbook = lif_workbook ).
+
+*   Start Worksheet //////////////////////////////////////////////////////////////////////////////
+    LOOP AT it_data[] INTO ls_data.
+*     Create Worksheet:
+      lif_worksheet = lif_document->create_simple_element(      name   = 'Worksheet'
+                                                                parent = lif_workbook ).
+*     Add name to Worksheet:
+      lif_attribute = lif_document->create_namespace_decl(      name   = 'Name'
+                                                                prefix = 'ss'
+                                                                uri    = ls_data-sheetname ).
+      lif_worksheet->set_attribute_node( lif_attribute ).
+
+*     Create Table:
+      lif_table = lif_document->create_simple_element(          name   = 'Table'
+                                                                parent = lif_worksheet ).
+*     Add common parts of Table:
+      me->_xml_doc_table( EXPORTING io_data       = ls_data-table
+                          CHANGING  cif_document  = lif_document
+                                    cif_table     = lif_table ).
+*     Add data to Table:
+      me->_xml_doc_data(  EXPORTING is_data       = ls_data
+                          CHANGING  cif_document  = lif_document
+                                    cif_table     = lif_table ).
+
+
+    ENDLOOP.
+    MESSAGE 'XML tables have been blended into an unique interface.' TYPE 'S'.
+    rt_binary[] = me->_xml_doc_binary( lif_document ).
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_TRANSLATE_UPPER
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_REQUEST                     TYPE        ANY
+* | [<-()] RV_TRANS                       TYPE        SO_OBJ_DES
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _TRANSLATE_UPPER.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    rv_trans = iv_request.
+    TRANSLATE rv_trans TO UPPER CASE.
+
+  ENDMETHOD.                    "_translate_upper
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_VALIDATE_EMAILS
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _VALIDATE_EMAILS.
+    DATA: ls_rcvrs TYPE LINE OF /iwfnd/t_epm_sel_email.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    IF me->v_sender IS INITIAL.
+      MESSAGE 'Sender is a mandatory input. Please, provide it.' TYPE 'E' DISPLAY LIKE 'S'.
+
+    ELSEIF me->_validate_email_single( me->v_sender ) EQ abap_false.
+      MESSAGE 'Sender email format is not valid. Please, review it.' TYPE 'E' DISPLAY LIKE 'S'.
+
+    ENDIF.
+    IF me->t_rcvrs[] IS INITIAL.
+      MESSAGE 'Receivers email is a mandatory input. Please, provide it.' TYPE 'E' DISPLAY LIKE 'S'.
+    ELSE.
+      LOOP AT me->t_rcvrs[] INTO ls_rcvrs.
+        CHECK me->_validate_email_single( ls_rcvrs-low ) EQ abap_false.
+        MESSAGE 'Receivers email format is not valid. Please, review it.' TYPE 'E' DISPLAY LIKE 'S'.
+
+      ENDLOOP.
+    ENDIF.
+
+  ENDMETHOD.                    "_validate_emails
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_VALIDATE_EMAIL_SINGLE
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_EMAIL                       TYPE        ANY
+* | [<-()] RV_VALID                       TYPE        FLAG
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _VALIDATE_EMAIL_SINGLE.
+    TYPES: BEGIN OF ty_sx_address,                     "SAPconnect general addr
+             type    TYPE sx_addr_type,
+             address TYPE sx_addr,
+           END OF ty_sx_address.
+    DATA: ls_address TYPE ty_sx_address.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+*   By defaul, email is valid:
+    rv_valid = abap_true.
+
+    ls_address-type    = 'INT'.
+    ls_address-address = iv_email.
+
+    CALL FUNCTION 'SX_INTERNET_ADDRESS_TO_NORMAL'
+      EXPORTING
+        address_unstruct    = ls_address
+        complete_address    = 'X'
+      EXCEPTIONS
+        error_address_type  = 1
+        error_address       = 2
+        error_group_address = 3
+        OTHERS              = 4.
+    IF sy-subrc NE 0.
+      rv_valid = abap_false.  "Email not valid
+
+    ENDIF.
+  ENDMETHOD.                    "_validate_email_single
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_XML_DOC_BINARY
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IIF_DOCUMENT                   TYPE REF TO IF_IXML_DOCUMENT
+* | [<-()] RT_BINARY                      TYPE        SOLIX_TAB
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _XML_DOC_BINARY.
+    DATA: lif_ixml           TYPE REF TO if_ixml.
+    DATA: lif_ixml_sf        TYPE REF TO if_ixml_stream_factory.
+    DATA: lif_ostream         TYPE REF TO if_ixml_ostream.
+    DATA: lv_xstr             TYPE xstring.
+*¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨*
+*   Create global objects
+    lif_ixml = cl_ixml=>create( ).
+    lif_ixml_sf = lif_ixml->create_stream_factory( ).
+*   Generate output stream of XML interface object to xstring variable:
+    lif_ostream = lif_ixml_sf->create_ostream_xstring( lv_xstr ).
+    iif_document->render( EXPORTING ostream = lif_ostream ).
+*   Return table in binary format so it can be consumed by BCS class as an attachment:
+    rt_binary[] = cl_document_bcs=>xstring_to_solix( lv_xstr ).
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_XML_DOC_DATA
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IS_DATA                        TYPE        ZIF_EMAIL_TYPES=>TY_EMAIL_ATTACHMENTS
+* | [<-->] CIF_DOCUMENT                   TYPE REF TO IF_IXML_DOCUMENT
+* | [<-->] CIF_TABLE                      TYPE REF TO IF_IXML_ELEMENT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _XML_DOC_DATA.
+    CONSTANTS: lc_header  TYPE string VALUE 'Header'.
+    CONSTANTS: lc_default TYPE string VALUE 'Default'.
+    FIELD-SYMBOLS: <lfs_t>  TYPE STANDARD TABLE.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+
+*   De-reference table-header into field symbol to handle details:
+    ASSIGN is_data-header->* TO <lfs_t>.
+*   Add table header details to XML table, therefore to XML document:
+    me->_xml_doc_data_add( EXPORTING it_data      = <lfs_t>
+                                     iv_style     = lc_header
+                            CHANGING cif_table    = cif_table
+                                     cif_document = cif_document ).
+
+*   De-reference table-data into field symbol to handle details:
+    ASSIGN is_data-table->* TO <lfs_t>.
+*   Add table data details to XML table, therefore to XML document:
+    me->_xml_doc_data_add( EXPORTING it_data      = <lfs_t>
+                                     iv_style     = lc_default
+                           CHANGING  cif_table    = cif_table
+                                     cif_document = cif_document ).
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_XML_DOC_DATA_ADD
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IT_DATA                        TYPE        STANDARD TABLE
+* | [--->] IV_STYLE                       TYPE        STRING
+* | [<-->] CIF_TABLE                      TYPE REF TO IF_IXML_ELEMENT
+* | [<-->] CIF_DOCUMENT                   TYPE REF TO IF_IXML_DOCUMENT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _XML_DOC_DATA_ADD.
+    FIELD-SYMBOLS: <lfs_s>  TYPE any.
+    FIELD-SYMBOLS: <lfs_v>  TYPE any.
+    DATA: lif_attribute     TYPE REF TO if_ixml_attribute.
+    DATA: lif_row           TYPE REF TO if_ixml_element.
+    DATA: lif_cell          TYPE REF TO if_ixml_element.
+    DATA: lif_data          TYPE REF TO if_ixml_element.
+    DATA: lv_while_counter  TYPE i VALUE 1.
+    DATA: lv_data           TYPE string.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+*   Start adding up the data to the XML object:
+    LOOP AT it_data ASSIGNING <lfs_s>.
+      lif_row = cif_document->create_simple_element(            name   = 'Row'
+                                                                parent = cif_table ).
+*     Reset WHILE counter back to 1:
+      lv_while_counter = 1.
+      WHILE 1 = 1.
+*       Get data value to be added: go through row picking up the value of each cell:
+        ASSIGN COMPONENT lv_while_counter OF STRUCTURE <lfs_s> TO <lfs_v>.
+        IF sy-subrc EQ 0 AND <lfs_v> IS ASSIGNED.
+*         Assign style attributes to cell:
+          lif_attribute = cif_document->create_namespace_decl(      name   = 'StyleID'
+                                                                    prefix = 'ss'
+                                                                    uri    = iv_style ).
+          lif_cell = cif_document->create_simple_element(           name   = 'Cell'
+                                                                    parent = lif_row ).
+          lif_cell->set_attribute_node( lif_attribute ).
+          lif_data = cif_document->create_simple_element(           name   = 'Data'
+                                                                    parent = lif_cell ).
+          lif_attribute = cif_document->create_namespace_decl(      name   = 'Type'
+                                                                    prefix = 'ss'
+                                                                    uri    = 'String' ).
+          lif_data->set_attribute_node( lif_attribute ).
+*         Bypass data to format-friendly variable and set value of cell:
+          lv_data = <lfs_v>.
+          lif_data->if_ixml_node~set_value( lv_data ).
+        ELSE.
+*         If there are no more cells to go through within row, then stop WHILE interaction:
+          EXIT.
+
+        ENDIF.
+
+        ADD 1 TO lv_while_counter.
+      ENDWHILE.
+    ENDLOOP.
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_XML_DOC_TABLE
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IO_DATA                        TYPE REF TO DATA
+* | [<-->] CIF_DOCUMENT                   TYPE REF TO IF_IXML_DOCUMENT
+* | [<-->] CIF_TABLE                      TYPE REF TO IF_IXML_ELEMENT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _XML_DOC_TABLE.
+    FIELD-SYMBOLS: <lfs_t>  TYPE STANDARD TABLE.
+    FIELD-SYMBOLS: <lfs_s>  TYPE any.
+    FIELD-SYMBOLS: <lfs_v>  TYPE any.
+    DATA: lif_attribute     TYPE REF TO if_ixml_attribute.
+    DATA: lv_cols_count   TYPE i.
+    DATA: lv_rows_count   TYPE i.
+    DATA: lv_cols         TYPE string.
+    DATA: lv_rows         TYPE string.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+
+*   De-reference input:
+    ASSIGN io_data->* TO <lfs_t>.
+*   Count number of rows and bypass variable to correct format:
+    DESCRIBE TABLE <lfs_t> LINES lv_rows_count.
+*   Add an extra row for the header:
+    lv_rows = lv_rows_count + 1.
+    CONDENSE lv_rows NO-GAPS.
+*   Count number of columns and bypass variable to correct format:
+    READ TABLE <lfs_t> ASSIGNING <lfs_s> INDEX 1.
+    IF sy-subrc EQ 0.
+      WHILE 1 = 1.
+        ASSIGN COMPONENT lv_cols_count OF STRUCTURE <lfs_s> TO <lfs_v>.
+        IF sy-subrc NE 0.
+          EXIT.
+
+        ENDIF.
+        ADD 1 TO lv_cols_count.
+
+      ENDWHILE.
+      lv_cols = lv_cols_count.
+      CONDENSE lv_cols NO-GAPS.
+*     Assign the table values of number of rows & columns:
+      lif_attribute = cif_document->create_namespace_decl(      name   = 'DefaultRowHeight'
+                                                                prefix = 'ss'
+                                                                uri    = '15' ).
+      cif_table->set_attribute_node( lif_attribute ).
+      lif_attribute = cif_document->create_namespace_decl(      name   = 'FullRows'
+                                                                prefix = 'x'
+                                                                uri    = '1' ).
+      cif_table->set_attribute_node( lif_attribute ).
+      lif_attribute = cif_document->create_namespace_decl(      name   = 'FullColumns'
+                                                                prefix = 'x'
+                                                                uri    = '1' ).
+      cif_table->set_attribute_node( lif_attribute ).
+      lif_attribute = cif_document->create_namespace_decl(      name   = 'ExpandedRowCount'
+                                                                prefix = 'ss'
+                                                                uri    = lv_rows ).   "Dynamic: Number of rows of table!
+      cif_table->set_attribute_node( lif_attribute ).
+      lif_attribute = cif_document->create_namespace_decl(      name   = 'ExpandedColumnCount'
+                                                                prefix = 'ss'
+                                                                uri    = lv_cols ).   "Dynamic: Number of columns of table!
+      cif_table->set_attribute_node( lif_attribute ).
+
+    ENDIF.
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_COMMUNICATIONS->_XML_DOC_WORKBOOK
+* +-------------------------------------------------------------------------------------------------+
+* | [<-->] CIF_DOCUMENT                   TYPE REF TO IF_IXML_DOCUMENT
+* | [<-->] CIF_WORKBOOK                   TYPE REF TO IF_IXML_ELEMENT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _XML_DOC_WORKBOOK.
+    DATA: lif_attribute     TYPE REF TO if_ixml_attribute.
+    DATA: lif_docproperties TYPE REF TO if_ixml_element.
+    DATA: lif_docsettings   TYPE REF TO if_ixml_element.
+    DATA: lif_element       TYPE REF TO if_ixml_element.
+    DATA: lif_styles        TYPE REF TO if_ixml_element.
+    DATA: lif_style         TYPE REF TO if_ixml_element.
+    DATA: lv_timestamp      TYPE timestampl.
+    DATA: lv_timestamp_str  TYPE string.
+    DATA: lv_data           TYPE string.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+
+* Workbook: Set Attributes  ///////////////////////////////////////////////////////////////////
+    lif_attribute = cif_document->create_namespace_decl(  name   = 'html'
+                                                          prefix = 'xmlns'
+                                                          uri    = 'http://www.w3.org/TR/REC-html40' ).
+    cif_workbook->set_attribute_node( lif_attribute ).
+    lif_attribute = cif_document->create_namespace_decl(  name   = 'ss'
+                                                          prefix = 'xmlns'
+                                                          uri    = 'urn:schemas-microsoft-com:office:spreadsheet' ).
+    cif_workbook->set_attribute_node( lif_attribute ).
+    lif_attribute = cif_document->create_namespace_decl( name   = 'x'
+                                                         prefix = 'xmlns'
+                                                         uri    = 'urn:schemas-microsoft-com:office:excel' ).
+    cif_workbook->set_attribute_node( lif_attribute ).
+    lif_attribute = cif_document->create_namespace_decl( name   = 'o'
+                                                         prefix = 'xmlns'
+                                                         uri    = 'urn:schemas-microsoft-com:office:office' ).
+    cif_workbook->set_attribute_node( lif_attribute ).
+    lif_attribute = cif_document->create_namespace_decl( name   = 'xmlns'
+                                                         prefix = ''
+                                                         uri    = 'urn:schemas-microsoft-com:office:spreadsheet' ).
+    cif_workbook->set_attribute_node( lif_attribute ).
+
+
+* Workbook: Document Properties  ///////////////////////////////////////////////////////////////////
+    lif_docproperties = cif_document->create_simple_element(  name   = 'DocumentProperties'
+                                                              parent = cif_workbook ).
+* Workbook: Document Properties: Set Attributes  ///////////////////////////////////////////////////
+    lif_attribute = cif_document->create_namespace_decl( name   = 'xmlns'
+                                                              prefix = ''
+                                                              uri    = 'urn:schemas-microsoft-com:office:office' ).
+    lif_docproperties->set_attribute_node( lif_attribute ).
+* Workbook: Document Properties: Set Values [Author / Created]  ////////////////////////////////////
+    cif_document->create_simple_element(                      name = 'Author'
+                                                              value = 'GFI CoE Team - FIS Project'
+                                                              parent = lif_docproperties  ).
+
+    GET TIME STAMP FIELD lv_timestamp.
+    lv_timestamp_str =  |{ lv_timestamp TIMESTAMP = ISO TIMEZONE = 'UTC   ' }|.
+    cif_document->create_simple_element(                      name = 'Created'
+                                                              value = lv_timestamp_str
+                                                              parent = lif_docproperties  ).
+* Workbook: Document Settings  ////////////////////////////////////////////////////////////////////
+    lif_docsettings = cif_document->create_simple_element(    name   = 'DocumentSettings'
+                                                              parent = cif_workbook ).
+* Workbook: Document Settings: Set Attributes  ///////////////////////////////////////////////////
+    lif_attribute = cif_document->create_namespace_decl(      name   = 'xmlns'
+                                                              prefix = ''
+                                                              uri    = 'urn:schemas-microsoft-com:office:office' ).
+    lif_docsettings->set_attribute_node( lif_attribute ).
+    lif_element = cif_document->create_simple_element(        name   = 'AllowPNG'
+                                                              parent = lif_docsettings ).
+
+* Workbook: Styles  /////////////////////////////////////////////////////////////////////////////
+    lif_styles = cif_document->create_simple_element(         name   = 'Styles'
+                                                              parent = cif_workbook ).
+* Workbook: Default Style  //////////////////////////////////////////////////////////////////////
+    lif_style = cif_document->create_simple_element(          name   = 'Style'
+                                                              parent = lif_styles ).
+    lif_attribute = cif_document->create_namespace_decl(      name   = 'ID'
+                                                              prefix = 'ss'
+                                                              uri    = 'Default' ).
+    lif_style->set_attribute_node( lif_attribute ).
+****  lif_attribute = lif_document->create_namespace_decl(      name   = 'Name'
+****                                                            prefix = ''
+****                                                            uri    = 'Normal' ).
+****  lif_style->set_attribute_node( lif_attribute ).
+
+* Workbook: Styles: Style > Alignment:
+    lif_element = cif_document->create_simple_element(        name   = 'Alignment'
+                                                              parent = lif_style ).
+    lif_attribute = cif_document->create_namespace_decl(      name   = 'Vertical'
+                                                              prefix = 'ss'
+                                                              uri    = 'Center' ).
+    lif_element->set_attribute_node( lif_attribute ).
+* Workbook: Styles: Style > Font: Type / Family / Size / Color
+    lif_element = cif_document->create_simple_element(        name   = 'Font'
+                                                              parent = lif_style ).
+    lif_attribute = cif_document->create_namespace_decl(      name   = 'Color'
+                                                              prefix = 'ss'
+                                                              uri    = '#000000' ).
+    lif_element->set_attribute_node( lif_attribute ).
+    lif_attribute = cif_document->create_namespace_decl(      name   = 'Size'
+                                                              prefix = 'ss'
+                                                              uri    = '11' ).
+    lif_element->set_attribute_node( lif_attribute ).
+    lif_attribute = cif_document->create_namespace_decl(      name   = 'Family'
+                                                              prefix = 'x'
+                                                              uri    = 'Swiss' ).
+    lif_element->set_attribute_node( lif_attribute ).
+    lif_attribute = cif_document->create_namespace_decl(      name   = 'FontName'
+                                                              prefix = 'ss'
+                                                              uri    = 'Calibri' ).
+    lif_element->set_attribute_node( lif_attribute ).
+
+* Workbook: Header Style  //////////////////////////////////////////////////////////////////////
+    lif_style = cif_document->create_simple_element(          name   = 'Style'
+                                                              parent = lif_styles ).
+    lif_attribute = cif_document->create_namespace_decl(      name   = 'ID'
+                                                              prefix = 'ss'
+                                                              uri    = 'Header' ).
+    lif_style->set_attribute_node( lif_attribute ).
+****  lif_attribute = lif_document->create_namespace_decl(      name   = 'Name'
+****                                                            prefix = ''
+****                                                            uri    = 'Normal' ).
+****  lif_style->set_attribute_node( lif_attribute ).
+
+* Workbook: Styles: Style > Alignment:
+    lif_element = cif_document->create_simple_element(        name   = 'Alignment'
+                                                              parent = lif_style ).
+    lif_attribute = cif_document->create_namespace_decl(      name   = 'Vertical'
+                                                              prefix = 'ss'
+                                                              uri    = 'Center' ).
+    lif_element->set_attribute_node( lif_attribute ).
+* Workbook: Styles: Style > Font: Type / Family / Size / Color
+    lif_element = cif_document->create_simple_element(        name   = 'Font'
+                                                              parent = lif_style ).
+    lif_attribute = cif_document->create_namespace_decl(      name   = 'Color'
+                                                              prefix = 'ss'
+                                                              uri    = '#FFFFFF' ).
+    lif_element->set_attribute_node( lif_attribute ).
+    lif_attribute = cif_document->create_namespace_decl(      name   = 'Size'
+                                                              prefix = 'ss'
+                                                              uri    = '11' ).
+    lif_element->set_attribute_node( lif_attribute ).
+    lif_attribute = cif_document->create_namespace_decl(      name   = 'Family'
+                                                              prefix = 'x'
+                                                              uri    = 'Swiss' ).
+    lif_element->set_attribute_node( lif_attribute ).
+    lif_attribute = cif_document->create_namespace_decl(      name   = 'FontName'
+                                                              prefix = 'ss'
+                                                              uri    = 'Calibri' ).
+    lif_element->set_attribute_node( lif_attribute ).
+* Workbook: Styles: Style > Interior:
+    lif_element = cif_document->create_simple_element(        name   = 'Interior'
+                                                              parent = lif_style ).
+    lif_attribute = cif_document->create_namespace_decl(      name   = 'Pattern'
+                                                              prefix = 'ss'
+                                                              uri    = 'Solid' ).
+    lif_element->set_attribute_node( lif_attribute ).
+    lif_attribute = cif_document->create_namespace_decl(      name   = 'Color'
+                                                              prefix = 'ss'
+                                                              uri    = '#70AD47' ).
+    lif_element->set_attribute_node( lif_attribute ).
+
+
+  ENDMETHOD.
+ENDCLASS.
