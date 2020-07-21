@@ -1,0 +1,338 @@
+class ZCL_EMAIL_TAB_HTML definition
+  public
+  create public .
+
+public section.
+*"* public components of class ZCL_EMAIL_TAB_HTML
+*"* do not include other source files here!!!
+
+  interfaces ZIF_EMAIL_TYPES .
+
+  data REF_HEADER type ref to DATA .
+  data REF_TABLE type ref to DATA .
+  data T_LAYOUT type ZIF_EMAIL_TYPES=>TTY_EMAIL_LAYOUT .
+  data V_CHG_BORDER_TYPE type STRING value '1px solid black'. "#EC NOTEXT .
+  data V_CHG_BORDER_COLLAPSE type STRING value 'collapse'. "#EC NOTEXT .
+  data V_CHG_BORDER_LINE type STRING value '1'. "#EC NOTEXT .
+  data V_CHG_WIDTH type STRING value '80%'. "#EC NOTEXT .
+  data V_CHG_FONT type STRING value 'calibri'. "#EC NOTEXT .
+  data V_CHG_ALIG type STRING value 'centre'. "#EC NOTEXT .
+  data V_TRICK_ME type FLAG .
+
+  methods CONSTRUCTOR
+    importing
+      !IREF_HEADER type ref to DATA
+      !IREF_TABLE type ref to DATA
+      !IT_LAYOUT type ZIF_EMAIL_TYPES=>TTY_EMAIL_LAYOUT
+      !IV_TRICK_ME type FLAG optional .
+  methods TRANSFORM
+    changing
+      !CT_BODY type BCSY_TEXT .
+  PROTECTED SECTION.
+private section.
+*"* private components of class ZCL_EMAIL_TAB_HTML
+*"* do not include other source files here!!!
+
+  methods _COMPOSE_TEMPLATE_START
+    changing
+      !CT_BODY type BCSY_TEXT .
+  methods _COMPOSE_HEADER
+    changing
+      !CT_BODY type BCSY_TEXT .
+  methods _COMPOSE_TABLE
+    changing
+      !CT_BODY type BCSY_TEXT .
+  methods _COMPOSE_TEMPLATE_END
+    changing
+      !CT_BODY type BCSY_TEXT .
+  methods _ADD_ROW
+    importing
+      !IV_INDEX type I
+      !IV_TYPE type STRING
+      !IS_DETAILS type ANY
+    changing
+      !CT_BODY type BCSY_TEXT .
+ENDCLASS.
+
+
+
+CLASS ZCL_EMAIL_TAB_HTML IMPLEMENTATION.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_TAB_HTML->CONSTRUCTOR
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IREF_HEADER                    TYPE REF TO DATA
+* | [--->] IREF_TABLE                     TYPE REF TO DATA
+* | [--->] IT_LAYOUT                      TYPE        ZIF_EMAIL_TYPES=>TTY_EMAIL_LAYOUT
+* | [--->] IV_TRICK_ME                    TYPE        FLAG(optional)
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: CONSTRUCTOR.
+*   Load inputs:
+    me->ref_header = iref_header.
+    me->ref_table  = iref_table.
+    me->t_layout   = it_layout.
+    IF iv_trick_me IS SUPPLIED.
+      me->v_trick_me = iv_trick_me.
+    ENDIF.
+  ENDMETHOD.                    "constructor
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_TAB_HTML->TRANSFORM
+* +-------------------------------------------------------------------------------------------------+
+* | [<-->] CT_BODY                        TYPE        BCSY_TEXT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: TRANSFORM.
+    DATA: lv_table_start TYPE string VALUE '<table style="width:$" "font-family:&;" border="?">'.
+    DATA: lv_table_border1 TYPE string VALUE '<html>',
+          lv_table_border2 TYPE string VALUE '<head>',
+          lv_table_border3 TYPE string VALUE '<style>',
+          lv_table_border4 TYPE string VALUE 'table, th, td {',
+          lv_table_border5 TYPE string VALUE 'border: 1px solid ligthgrey;',
+          lv_table_border6 TYPE string VALUE 'border-collapse: collapse;',
+          lv_table_border7 TYPE string VALUE '}',
+          lv_table_border8 TYPE string VALUE '</style>',
+          lv_table_border9 TYPE string VALUE '</head>',
+          lv_table_border10 TYPE string VALUE '<body>'.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+****    me->_compose_template_start( CHANGING ct_body = ct_body ).
+***    APPEND lv_table_border1 TO ct_body[].
+***    APPEND lv_table_border2 TO ct_body[].
+***    APPEND lv_table_border3 TO ct_body[].
+***    APPEND lv_table_border4 TO ct_body[].
+***    APPEND lv_table_border5 TO ct_body[].
+***    APPEND lv_table_border6 TO ct_body[].
+***    APPEND lv_table_border7 TO ct_body[].
+***    APPEND lv_table_border8 TO ct_body[].
+***    APPEND lv_table_border9 TO ct_body[].
+***    APPEND lv_table_border10 TO ct_body[].
+
+    REPLACE '$' IN lv_table_start WITH me->v_chg_width.
+    REPLACE '&' IN lv_table_start WITH me->v_chg_font.
+    REPLACE '?' IN lv_table_start WITH me->v_chg_border_line.
+
+    APPEND lv_table_start TO ct_body[].
+    me->_compose_header( CHANGING ct_body = ct_body ).
+    me->_compose_table( CHANGING ct_body = ct_body ).
+    me->_compose_template_end( CHANGING ct_body = ct_body ).
+  ENDMETHOD.                    "transform
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_EMAIL_TAB_HTML->ZIF_EMAIL_TYPES~CHECK_COLOR
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_COLOR                       TYPE        STRING
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+METHOD ZIF_EMAIL_TYPES~CHECK_COLOR.
+
+  CHECK me->v_trick_me IS INITIAL.
+      IF iv_color EQ zif_email_types=>c_pure_white    OR
+       iv_color EQ zif_email_types=>c_header_green  OR
+       iv_color EQ zif_email_types=>c_row_3_green   OR
+       iv_color EQ zif_email_types=>c_row_2_green   OR
+       iv_color EQ zif_email_types=>c_row_1_green   OR
+       iv_color EQ zif_email_types=>c_row_0_green   OR
+       iv_color EQ zif_email_types=>c_header_blue   OR
+       iv_color EQ zif_email_types=>c_row_3_blue    OR
+       iv_color EQ zif_email_types=>c_row_2_blue    OR
+       iv_color EQ zif_email_types=>c_row_1_blue    OR
+       iv_color EQ zif_email_types=>c_row_0_blue    OR
+       iv_color EQ zif_email_types=>c_header_orange OR
+       iv_color EQ zif_email_types=>c_row_3_orange  OR
+       iv_color EQ zif_email_types=>c_row_2_orange  OR
+       iv_color EQ zif_email_types=>c_row_1_orange  OR
+       iv_color EQ zif_email_types=>c_row_0_orange  OR
+       iv_color EQ zif_email_types=>c_header_red    OR
+       iv_color EQ zif_email_types=>c_row_3_red     OR
+       iv_color EQ zif_email_types=>c_row_2_red     OR
+       iv_color EQ zif_email_types=>c_row_1_red     OR
+       iv_color EQ zif_email_types=>c_row_0_red     OR
+       iv_color EQ zif_email_types=>c_header_yellow OR
+       iv_color EQ zif_email_types=>c_row_3_yellow  OR
+       iv_color EQ zif_email_types=>c_row_2_yellow  OR
+       iv_color EQ zif_email_types=>c_row_1_yellow  OR
+       iv_color EQ zif_email_types=>c_row_0_yellow.
+
+    "All right! Keep going.
+  ELSE.
+    MESSAGE 'Colors provided do not fit in the standard stablished. Please, check constant declarations in the Attributes of ZIF_EMAIL_TYPES with tcode SE24.' TYPE 'E' DISPLAY LIKE 'S'.
+
+  ENDIF.
+ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_TAB_HTML->_ADD_ROW
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_INDEX                       TYPE        I
+* | [--->] IV_TYPE                        TYPE        STRING
+* | [--->] IS_DETAILS                     TYPE        ANY
+* | [<-->] CT_BODY                        TYPE        BCSY_TEXT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _ADD_ROW.
+    DATA: lv_template_start TYPE string VALUE '<%%  style="color:&; background-color:$; text-align:@; font-family:*; font-size:!">'.
+    DATA: lv_template_end   TYPE string VALUE '</%%>'.
+    DATA: lv_cell           TYPE string.
+    DATA: ls_layout         TYPE zif_email_types=>ty_email_layout.
+    FIELD-SYMBOLS: <lfs_t>  TYPE STANDARD TABLE.
+    FIELD-SYMBOLS: <lfs_s>  TYPE any.
+    FIELD-SYMBOLS: <lfs_v>  TYPE any.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    CASE iv_type.
+      WHEN 'HEADER'.
+        REPLACE ALL OCCURRENCES OF '%%' IN lv_template_start WITH 'th'.
+        REPLACE ALL OCCURRENCES OF '%%' IN lv_template_end WITH 'th'.
+      WHEN 'ROW'.
+        REPLACE ALL OCCURRENCES OF '%%' IN lv_template_start WITH 'td'.
+        REPLACE ALL OCCURRENCES OF '%%' IN lv_template_end WITH 'td'.
+    ENDCASE.
+
+    READ TABLE me->t_layout[] INTO ls_layout INDEX iv_index.
+    WHILE 1 = 1.
+      ASSIGN COMPONENT sy-index OF STRUCTURE is_details TO <lfs_v>.
+      IF sy-subrc EQ 0.
+        lv_cell = lv_template_start.
+        me->zif_email_types~check_color( iv_color = ls_layout-bg_color ).
+        REPLACE ALL OCCURRENCES OF '$' IN lv_cell WITH ls_layout-bg_color.
+        REPLACE ALL OCCURRENCES OF '&' IN lv_cell WITH ls_layout-color.
+        REPLACE ALL OCCURRENCES OF '@' IN lv_cell WITH ls_layout-alignment.
+        REPLACE ALL OCCURRENCES OF '*' IN lv_cell WITH ls_layout-type.
+        REPLACE ALL OCCURRENCES OF '!' IN lv_cell WITH ls_layout-size.
+        APPEND lv_cell         TO ct_body[].
+        APPEND <lfs_v>         TO ct_body[].
+        APPEND lv_template_end TO ct_body[].
+        CLEAR: lv_cell.
+        UNASSIGN <lfs_v>.
+      ELSE.
+        EXIT.
+
+      ENDIF.
+    ENDWHILE.
+  ENDMETHOD.                    "_add_row
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_TAB_HTML->_COMPOSE_HEADER
+* +-------------------------------------------------------------------------------------------------+
+* | [<-->] CT_BODY                        TYPE        BCSY_TEXT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _COMPOSE_HEADER.
+    DATA: lv_row_start    TYPE string VALUE '<tr>'.
+    DATA: lv_row_end      TYPE string VALUE '</tr>'.
+    FIELD-SYMBOLS: <lfs_t> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS: <lfs_s> TYPE any.
+    FIELD-SYMBOLS: <lfs_v> TYPE any.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    APPEND lv_row_start TO ct_body[].
+    ASSIGN me->ref_header->* TO <lfs_t>.
+    READ TABLE <lfs_t> ASSIGNING <lfs_s> INDEX 1.
+    IF sy-subrc EQ 0.
+      me->_add_row( EXPORTING iv_index   = 1
+                              iv_type    = 'HEADER'
+                              is_details = <lfs_s>
+                    CHANGING  ct_body    = ct_body ).
+
+    ENDIF.
+    APPEND lv_row_end TO ct_body[].
+  ENDMETHOD.                    "_compose_header
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_TAB_HTML->_COMPOSE_TABLE
+* +-------------------------------------------------------------------------------------------------+
+* | [<-->] CT_BODY                        TYPE        BCSY_TEXT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _COMPOSE_TABLE.
+    DATA: lv_row_start    TYPE string VALUE '<tr>'.
+    DATA: lv_row_end      TYPE string VALUE '</tr>'.
+    DATA: lv_loop_counter TYPE i VALUE 2.
+    FIELD-SYMBOLS: <lfs_t> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS: <lfs_s> TYPE any.
+    FIELD-SYMBOLS: <lfs_v> TYPE any.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    ASSIGN me->ref_table->* TO <lfs_t>.
+    LOOP AT <lfs_t> ASSIGNING <lfs_s>.
+      APPEND lv_row_start TO ct_body[].
+      me->_add_row( EXPORTING iv_index   = lv_loop_counter
+                              iv_type    = 'ROW'
+                              is_details = <lfs_s>
+                     CHANGING ct_body    = ct_body ).
+      APPEND lv_row_end   TO ct_body[].
+      ADD 1 TO lv_loop_counter.
+    ENDLOOP.
+  ENDMETHOD.                    "_compose_table
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_TAB_HTML->_COMPOSE_TEMPLATE_END
+* +-------------------------------------------------------------------------------------------------+
+* | [<-->] CT_BODY                        TYPE        BCSY_TEXT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _COMPOSE_TEMPLATE_END.
+    DATA: lv_table_end    TYPE string VALUE '</table>'.
+    DATA: lv_body_end     TYPE string VALUE '</body>'.
+    DATA: lv_html_end     TYPE string VALUE '</html>'.
+    DATA: lv_set_format   TYPE string.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+    APPEND lv_table_end      TO ct_body[].
+*    APPEND lv_body_end       TO ct_body[].
+*    APPEND lv_html_end       TO ct_body[].
+
+  ENDMETHOD.                    "_compose_template_end
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_EMAIL_TAB_HTML->_COMPOSE_TEMPLATE_START
+* +-------------------------------------------------------------------------------------------------+
+* | [<-->] CT_BODY                        TYPE        BCSY_TEXT
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD: _COMPOSE_TEMPLATE_START.
+    DATA: lv_html_start   TYPE string VALUE '<html>'.
+    DATA: lv_head_start   TYPE string VALUE '<head>'.
+    DATA: lv_style_start  TYPE string VALUE '<style>'.
+    DATA: lv_style_1      TYPE string VALUE 'table {'.
+    DATA: lv_style_2      TYPE string VALUE 'border-collapse: "$$$$$$";'.
+    DATA: lv_style_3      TYPE string VALUE '}'.
+    DATA: lv_style_4      TYPE string VALUE 'table, th, td {'.
+    DATA: lv_style_5      TYPE string VALUE 'border: "$$$$$$";'.
+    DATA: lv_style_6      TYPE string VALUE 'font-family: "$$$$$$";'.
+    DATA: lv_style_7      TYPE string VALUE 'text-align: "$$$$$$";'.
+    DATA: lv_style_8      TYPE string VALUE '}'.
+    DATA: lv_style_end    TYPE string VALUE '</style>'.
+    DATA: lv_head_end     TYPE string VALUE '</head>'.
+    DATA: lv_body_start   TYPE string VALUE '<body>'.
+    DATA: lv_table_start  TYPE string VALUE '<table>'.
+    DATA: lv_set_format   TYPE string.
+* ¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨ *
+*   Compose the main HTML template for the CLASS:
+    APPEND lv_html_start     TO ct_body[].
+    APPEND lv_head_start     TO ct_body[].
+    APPEND lv_style_start    TO ct_body[].
+    APPEND lv_style_1        TO ct_body[].
+*   Set border format:
+    lv_set_format = lv_style_2.
+    REPLACE ALL OCCURRENCES OF '$$$$$$' IN lv_set_format WITH me->v_chg_border_collapse.
+    APPEND lv_set_format     TO ct_body[].
+    APPEND lv_style_3        TO ct_body[].
+    APPEND lv_style_4        TO ct_body[].
+*   Set border format:
+    lv_set_format = lv_style_5.
+    REPLACE ALL OCCURRENCES OF '$$$$$$' IN lv_set_format WITH me->v_chg_border_type.
+    APPEND lv_set_format     TO ct_body[].
+*   Set font format:
+    lv_set_format = lv_style_6.
+    REPLACE ALL OCCURRENCES OF '$$$$$$' IN lv_set_format WITH me->v_chg_font.
+    APPEND lv_set_format     TO ct_body[].
+*   Set alignment format:
+    lv_set_format = lv_style_7.
+    REPLACE ALL OCCURRENCES OF '$$$$$$' IN lv_set_format WITH me->v_chg_alig.
+    APPEND lv_set_format     TO ct_body[].
+    APPEND lv_style_8        TO ct_body[].
+    APPEND lv_style_end      TO ct_body[].
+    APPEND lv_head_end       TO ct_body[].
+    APPEND lv_body_start     TO ct_body[].
+    APPEND lv_table_start    TO ct_body[].
+
+  ENDMETHOD.                    "_compose_template_start
+ENDCLASS.
