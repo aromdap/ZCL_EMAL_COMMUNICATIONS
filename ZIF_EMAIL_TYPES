@@ -1,0 +1,150 @@
+*"* components of interface ZIF_EMAIL_TYPES
+interface ZIF_EMAIL_TYPES
+  public .
+
+
+  types RTY_STRINGS TYPE RANGE OF STRING.
+  types TY_RECEIVERS type /IWFND/T_EPM_SEL_EMAIL .
+  types TY_SENDER type ADR6-SMTP_ADDR .
+  types:
+    BEGIN OF ty_email_texts,
+              sort TYPE i,
+              type TYPE string,
+              text TYPE bcsy_text,
+           END OF ty_email_texts .
+  types:
+    BEGIN OF ty_email_layout,
+            bg_color   TYPE string,
+            color      TYPE string,
+            alignment  TYPE string,
+            type       TYPE string,
+            size       TYPE string,
+         END OF ty_email_layout .
+  types:
+    tty_email_layout      TYPE STANDARD TABLE OF ty_email_layout      WITH DEFAULT KEY .
+  types:
+    BEGIN OF ty_email_body_tables,
+            sort    TYPE i,
+            header  TYPE REF TO data,
+            table   TYPE REF TO data,
+            layout  TYPE tty_email_layout,
+    END OF ty_email_body_tables .
+  types:
+    BEGIN OF ty_email_body_charts,
+            sort           TYPE i,
+            if_xml_data    TYPE REF TO if_ixml_document,
+            if_xml_custom  TYPE REF TO if_ixml_document,
+            size           TYPE string,
+            width          TYPE string,
+            length         TYPE string,
+            title          TYPE string,
+            chart_name     TYPE sood-objdes,
+    END OF ty_email_body_charts .
+  types:
+    BEGIN OF ty_email_attachments,
+            sort      TYPE i,
+            type      TYPE string,
+            filename  TYPE so_obj_des,
+            sheetname TYPE string,
+            catalogue TYPE lvc_t_fcat,
+            grouped   TYPE lvc_t_sort,
+            header    TYPE REF TO data,
+            table     TYPE REF TO data,
+            binary    TYPE solix_tab,
+            size      TYPE so_obj_len,
+            processed TYPE flag,
+         END OF ty_email_attachments .
+  types:
+    tty_email_texts       TYPE STANDARD TABLE OF ty_email_texts       WITH DEFAULT KEY .
+  types:
+    tty_email_body_tables TYPE STANDARD TABLE OF ty_email_body_tables WITH DEFAULT KEY .
+  types:
+    tty_email_body_charts TYPE STANDARD TABLE OF ty_email_body_charts WITH DEFAULT KEY .
+  types:
+    tty_email_attachments TYPE STANDARD TABLE OF ty_email_attachments WITH DEFAULT KEY .
+
+  constants C_CHART_AXIS_X_DIRECTION type STRING value 'Up'. "#EC NOTEXT
+  constants C_CHART_AXIS_X_FONT type STRING value 'Calibri'. "#EC NOTEXT
+  constants C_CHART_AXIS_X_SIZE type STRING value '10'. "#EC NOTEXT
+  constants C_CHART_AXIS_X_STYLE type STRING value 'Default'. "#EC NOTEXT
+  constants C_CHART_AXIS_Y_DIRECTION type STRING value 'Default'. "#EC NOTEXT
+  constants C_CHART_AXIS_Y_FONT type STRING value 'Calibri'. "#EC NOTEXT
+  constants C_CHART_AXIS_Y_SIZE type STRING value '10'. "#EC NOTEXT
+  constants C_CHART_AXIS_Y_STYLE type STRING value 'Default'. "#EC NOTEXT
+  constants C_CHART_DIMENSION_0 type STRING value 'Two'. "#EC NOTEXT
+  constants C_CHART_DIMENSION_1 type STRING value 'PseudoTwo'. "#EC NOTEXT
+  constants C_CHART_DIMENSION_2 type STRING value 'Three'. "#EC NOTEXT
+  constants C_CHART_DIMENSION_3 type STRING value 'PseudoThree'. "#EC NOTEXT
+  constants C_CHART_HEIGHT type STRING value '600'. "#EC NOTEXT
+  constants C_CHART_LEGEND_FONT type STRING value 'Calibri'. "#EC NOTEXT
+  constants C_CHART_LEGEND_SIZE type STRING value '10'. "#EC NOTEXT
+  constants C_CHART_LEGEND_STYLE type STRING value 'Default'. "#EC NOTEXT
+  constants C_CHART_PALETTE_0 type STRING value 'Tradeshow'. "#EC NOTEXT
+  constants C_CHART_PALETTE_1 type STRING value 'Streamline'. "#EC NOTEXT
+  constants C_CHART_PALETTE_2 type STRING value 'Custom'. "#EC NOTEXT
+  constants C_CHART_TITLE_FONT type STRING value 'Calibri'. "#EC NOTEXT
+  constants C_CHART_TITLE_SIZE type STRING value '15'. "#EC NOTEXT
+  constants C_CHART_TITLE_STYLE type STRING value 'Normal'. "#EC NOTEXT
+  constants C_CHART_TYPE_AREA type STRING value 'Area'. "#EC NOTEXT
+  constants C_CHART_TYPE_BARS type STRING value 'Bars'. "#EC NOTEXT
+  constants C_CHART_TYPE_COLUMNS type STRING value 'Columns'. "#EC NOTEXT
+  constants C_CHART_TYPE_DOUGHNUT type STRING value 'Doughnut'. "#EC NOTEXT
+  constants C_CHART_TYPE_LINES type STRING value 'Lines'. "#EC NOTEXT
+  constants C_CHART_TYPE_PIE type STRING value 'Pie'. "#EC NOTEXT
+  constants C_CHART_TYPE_POLAR type STRING value 'Polar'. "#EC NOTEXT
+  constants C_CHART_TYPE_PROFILEAREA type STRING value 'ProfileArea'. "#EC NOTEXT
+  constants C_CHART_TYPE_PROFILES type STRING value 'Profiles'. "#EC NOTEXT
+  constants C_CHART_TYPE_RADAR type STRING value 'Radar'. "#EC NOTEXT
+  constants C_CHART_TYPE_SPEEDOMETER type STRING value 'Speedometer'. "#EC NOTEXT
+  constants C_CHART_TYPE_SPLITPIE type STRING value 'SplitPie'. "#EC NOTEXT
+  constants C_CHART_TYPE_STACKEDAREA type STRING value 'StackedArea'. "#EC NOTEXT
+  constants C_CHART_TYPE_STACKEDBARS type STRING value 'StackedBars'. "#EC NOTEXT
+  constants C_CHART_TYPE_STACKEDCOLUMNS type STRING value 'StackedColumns'. "#EC NOTEXT
+  constants C_CHART_TYPE_STACKEDLINES type STRING value 'StackedLines'. "#EC NOTEXT
+  constants C_CHART_TYPE_STACKEDPROFILES type STRING value 'StackedProfiles'. "#EC NOTEXT
+  constants C_CHART_TYPE_STACKEDRADAR type STRING value 'StackedRadar'. "#EC NOTEXT
+  constants C_CHART_TYPE_STACKPROFAREA type STRING value 'StackedProfileArea'. "#EC NOTEXT
+  constants C_CHART_WIDTH type STRING value '1200'. "#EC NOTEXT
+  constants C_HEADER_BLUE type STRING value '#2586DB'. "#EC NOTEXT
+  constants C_HEADER_GREEN type STRING value '#538135'. "#EC NOTEXT
+  constants C_HEADER_ORANGE type STRING value '#EBB134'. "#EC NOTEXT
+  constants C_HEADER_RED type STRING value '#FF0000'. "#EC NOTEXT
+  constants C_HEADER_YELLOW type STRING value '#F5D200'. "#EC NOTEXT
+  constants C_KPI_TEXT type STRING value 'See, below, the relation of KPI(s) calculated by this report and their values for the last 8 extractions:'. "#EC NOTEXT
+  constants C_PURE_WHITE type STRING value '#FFFFFF'. "#EC NOTEXT
+  constants C_ROW_0_BLUE type STRING value '#C7DCF0'. "#EC NOTEXT
+  constants C_ROW_0_GREEN type STRING value '#C6DEB6'. "#EC NOTEXT
+  constants C_ROW_0_ORANGE type STRING value '#EDE2CA'. "#EC NOTEXT
+  constants C_ROW_0_RED type STRING value '#F7D5D5'. "#EC NOTEXT
+  constants C_ROW_0_YELLOW type STRING value '#FFFCED'. "#EC NOTEXT
+  constants C_ROW_1_BLUE type STRING value '#A8C8E6'. "#EC NOTEXT
+  constants C_ROW_1_GREEN type STRING value '#A1CC85'. "#EC NOTEXT
+  constants C_ROW_1_ORANGE type STRING value '#EDD49F'. "#EC NOTEXT
+  constants C_ROW_1_RED type STRING value '#F2B2AA'. "#EC NOTEXT
+  constants C_ROW_1_YELLOW type STRING value '#FCF3CA'. "#EC NOTEXT
+  constants C_ROW_2_BLUE type STRING value '#88B8E3'. "#EC NOTEXT
+  constants C_ROW_2_GREEN type STRING value '#79BD4D'. "#EC NOTEXT
+  constants C_ROW_2_ORANGE type STRING value '#EBC981'. "#EC NOTEXT
+  constants C_ROW_2_RED type STRING value '#FC9574'. "#EC NOTEXT
+  constants C_ROW_2_YELLOW type STRING value '#F5E689'. "#EC NOTEXT
+  constants C_ROW_3_BLUE type STRING value '#58A0E0'. "#EC NOTEXT
+  constants C_ROW_3_GREEN type STRING value '#649C40'. "#EC NOTEXT
+  constants C_ROW_3_ORANGE type STRING value '#E8BC5A'. "#EC NOTEXT
+  constants C_ROW_3_RED type STRING value '#FF6A3B'. "#EC NOTEXT
+  constants C_ROW_3_YELLOW type STRING value '#EBD86A'. "#EC NOTEXT
+  constants C_CHART_S_LINEWIDTH type STRING value '8'. "#EC NOTEXT
+  constants C_CHART_S_MARKERSIZE type STRING value '10'. "#EC NOTEXT
+  constants C_CHART_S_LINETYPE type STRING value 'Curve'. "#EC NOTEXT
+  constants C_CHART_S_TEXT_POSITION type STRING value 'Top'. "#EC NOTEXT
+  constants C_CHART_S_TEXT_SIZE type STRING value '10'. "#EC NOTEXT
+  constants C_CHART_S_TEXT_DIRECTION type STRING value 'DiagonalUp'. "#EC NOTEXT
+  constants C_CHART_S_SHOWLABEL type STRING value 'true'. "#EC NOTEXT
+  constants C_CHART_BACKGROUND_COLOR type STRING value 'RGB(247,255,249)'. "#EC NOTEXT
+  constants C_CHART_PLOTAREA_COLOR type STRING value 'RGB(247,255,249)'. "#EC NOTEXT
+  constants C_CHART_AXIS_COLOR type STRING value '@41'. "#EC NOTEXT
+  constants C_CHART_AXIS_GRIDLINE type STRING value '@41'. "#EC NOTEXT
+
+  methods CHECK_COLOR
+    importing
+      !IV_COLOR type STRING .
+endinterface.
